@@ -16,11 +16,26 @@ import { warnOnce } from '../utils.js';
 motionRegistry.register('effect', {
   name: 'filmGrain',
   category: 'effect',
-  status: 'planned',
+  status: 'implemented',
   description: 'Animated photographic grain overlay',
   params: {
     opacity: { default: 0.1, description: 'Overlay opacity' },
     size: { default: 0.8, description: 'Grain frequency (higher = finer)' },
+  },
+  // Same single-SVG-turbulence-rect technique as cinematic.jsx's proven Grain
+  // overlay — one filtered rect, no canvas, no per-frame JS pixel work. The
+  // seed is derived from eased progress, so the grain animates but any given
+  // frame is fully deterministic (re-renders are bit-identical). intensity 0
+  // (or opacity 0) returns null: the overlay is skipped entirely.
+  apply(t, motion) {
+    const opacity = motion.params.opacity * motion.intensity;
+    if (opacity <= 0) return null;
+    return {
+      kind: 'filmGrain',
+      opacity: opacity > 1 ? 1 : opacity,
+      baseFrequency: motion.params.size,
+      seed: 1 + (Math.floor(t * 997) % 19),
+    };
   },
 });
 

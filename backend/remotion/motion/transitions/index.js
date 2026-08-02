@@ -14,10 +14,19 @@ export const TRANSITION_IDENTITY = Object.freeze({ opacity: 1, transform: '', fi
 motionRegistry.register('transition', {
   name: 'fade',
   category: 'transition',
-  status: 'planned',
+  status: 'implemented',
   description: 'Opacity cross-fade',
   directions: ['in', 'out'],
   params: {},
+  // Duration/easing/delay all come from the engine (resolveMotion +
+  // motionProgress) — apply only maps eased progress to opacity.
+  apply(t, motion) {
+    return {
+      opacity: motion.direction === 'out' ? 1 - t : t,
+      transform: '',
+      filter: '',
+    };
+  },
 });
 
 motionRegistry.register('transition', {

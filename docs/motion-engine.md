@@ -1,6 +1,6 @@
 # Nerrico Motion Engine (NME)
 
-> Architecture reference. Built in Phase 2A (2026-08-02). Implementations of the declared motions land in Phase 2B+.
+> Architecture reference. Built in Phase 2A (2026-08-02). Phase 2B implemented the first four motions — camera `zoom` + `pan`, transition `fade`, effect `filmGrain` (proven by the `MotionDemo` composition); the rest land in Phase 2C+.
 
 ## What it is
 
@@ -82,11 +82,15 @@ motionRegistry.has('preset', shot.motion); // validate planner output
 
 ## Testing
 
-`node scripts/test-motion.js` (from `backend/`) — 36 checks over registry contracts, easing math, resolution precedence, progress math (delay/speed/scene-span), dispatch fallbacks, and the shared-identity perf guarantee. Run it after any motion/ change.
+`node scripts/test-motion.js` (from `backend/`) — 56 checks over registry contracts, easing math, resolution precedence, progress math (delay/speed/scene-span), dispatch fallbacks, the shared-identity perf guarantee, and the implemented motions' math (zoom ramps/origin/intensity, pan directions, fade in/out, filmGrain determinism). The script prints its own count — keep docs in sync with that output. Run it after any motion/ change.
 
-## Phase 2B integration plan (not done yet)
+`node scripts/render-motion-demo.js` (from `backend/`, needs no server) — renders the `MotionDemo` composition (4 labeled segments: slow zoom, pan, fade, film grain) plus verification stills to `data/motion-demo/`. This is the visual proof that implemented motions work end-to-end in a real render.
 
-- Implement camera `apply` functions (port `cameraTransform()` from `cinematic.jsx` into `zoom`/`pan` as the first two).
-- Migrate `cinematic.jsx`'s hand-rolled Grain/vignette into `effects/` definitions.
+## Phase 2C integration plan (not done yet)
+
+Done in 2B: `zoom`/`pan` `apply` functions (ported from `cinematic.jsx`'s `cameraTransform()`), `fade`, `filmGrain`, the `MotionDemo` validation composition, and effect rendering via `useEffectMotion`/`MotionEffect`. Still remaining:
+
+- Implement the remaining kinds: camera rotate/orbit/shake/focusPull, transitions slide/whip/flash/paperReveal/morph, effects blur/glow/noise/particles/vignette.
+- Migrate `cinematic.jsx` off its hand-rolled `cameraTransform`/Grain/vignette onto the engine (they are intentionally still duplicated until the styles switch over).
 - Drive scene wrappers in `Short.jsx` with `useTransitionMotion`.
 - Extend the scene-planner prompt to emit preset names, validated against the registry in `src/core/scenes.js`.

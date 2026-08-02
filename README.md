@@ -78,7 +78,9 @@ Nerrico is developed in **explicit, sequential phases**. Each phase is scoped up
 
 > ✅ **Phase 1 — Foundation** complete: full SaaS-grade architecture refactor with a layered backend, typed frontend API layer, and centralized configuration.
 >
-> ✅ **Phase 2A — Motion Engine Foundation** complete: style-agnostic motion framework (registry, presets, timing engine, camera/transition/effect architecture). Motion implementations follow in Phase 2B.
+> ✅ **Phase 2A — Motion Engine Foundation** complete: style-agnostic motion framework (registry, presets, timing engine, camera/transition/effect architecture).
+>
+> ✅ **Phase 2B — First Motion Implementations** complete: slow zoom, pan, fade, and film grain implemented through the engine and proven by a rendered validation demo. Remaining motions and style integration follow in Phase 2C.
 
 **Upcoming phases:**
 
@@ -146,7 +148,8 @@ Additional design docs live in [`docs/`](docs/), including the backend API contr
 - [x] Phase 1 — Foundation
 - [ ] Phase 2 — Motion Engine
   - [x] Phase 2A — Motion Engine foundation (registry, types, presets, timing)
-  - [ ] Phase 2B — Motion implementations & style integration
+  - [x] Phase 2B — First motion implementations, PoC (slow zoom, pan, fade, film grain + MotionDemo)
+  - [ ] Phase 2C — Remaining motions & style integration
 - [ ] Phase 3 — Style Bible
 - [ ] Phase 4 — Asset Engine
 - [ ] Phase 5 — Voice Engine

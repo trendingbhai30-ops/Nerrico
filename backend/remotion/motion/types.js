@@ -86,6 +86,7 @@
  * @property {number} y        px
  * @property {number} rotate   deg
  * @property {number} blur     px (focus pull)
+ * @property {string} [origin] CSS transform-origin (zoom focal point). Absent = '50% 50%'.
  */
 
 /**

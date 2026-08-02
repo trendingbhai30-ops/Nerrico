@@ -1,11 +1,11 @@
 # PROJECT_STATUS.md
 
 > Snapshot of where Nerrico stands right now. Update this file at the end of every phase.
-> Last updated: **2026-08-02** (after Phase 2A — Motion Engine foundation)
+> Last updated: **2026-08-02** (after Phase 2B — first motion implementations)
 
 ## Current Phase
 
-**Phase 2A (Motion Engine foundation) is COMPLETE and validated.** Waiting on user approval before starting Phase 2B (motion implementations + style integration).
+**Phase 2B (first Motion Engine implementations — proof of concept) is COMPLETE and validated.** Waiting on user approval before starting Phase 2C (remaining motions + wiring NME into the production styles).
 
 ## Completed Work
 
@@ -32,9 +32,16 @@
 - Purely additive: zero changes to existing compositions, pipeline, or API. Smoke test: `backend/scripts/test-motion.js` (36 checks, all passing).
 - Validated: motion test PASS, live server endpoints healthy, full standalone re-render RENDER OK, frontend `tsc`+`vite build` clean, oxlint 1 pre-existing warning only.
 
+### Phase 2B — First motion implementations, proof of concept (2026-08-02)
+
+- **Implemented 4 motions** by adding `apply` functions to their existing Phase 2A definitions (`status` flipped to `'implemented'`; zero architecture changes): camera **zoom** (scale/duration/easing + configurable `origin` focal point; math ported from `cinematic.jsx` `cameraTransform`), camera **pan** (left/right/up/down, constant hold-zoom, hand-held tilt), transition **fade** (in/out, duration/easing from the engine), effect **filmGrain** (single SVG turbulence rect — lightweight, deterministic seed derived from eased progress, `intensity: 0` skips the overlay entirely).
+- **hooks.js additions**: `useCameraMotion` now returns `transformOrigin`; new `useEffectMotion` + `MotionEffect` overlay component (plain `React.createElement` — hooks.js stays the only React module in motion/). **Bug fixed**: hooks.js now side-effect-imports `presets/index.js` — without it, compositions importing only hooks.js got "Unknown preset" at render time.
+- **MotionDemo**: new `remotion/MotionDemo.jsx` composition (4 plain labeled segments: slow zoom → pan → fade in/out → film grain over a procedural grid backdrop; zero hand-rolled animation math) + `scripts/render-motion-demo.js` (renders `data/motion-demo/motion-demo.mp4` + 8 verification stills). Rendered and frame-verified.
+- Smoke test extended to **56 checks** (implementation math: zoom ramps/origin/intensity, pan directions, fade in/out, grain determinism; fallback checks moved to still-planned kinds). Production styles untouched.
+
 ## Pending Phases
 
-- **Phase 2B** — implement motion `apply` functions (start by porting `cinematic.jsx`'s `cameraTransform` into `zoom`/`pan`), migrate hand-rolled Grain/vignette into `effects/`, drive transitions from `Short.jsx`, extend the scene planner to emit preset names validated against the registry.
+- **Phase 2C** — remaining motion implementations (rotate/orbit/shake/focusPull, remaining transitions/effects) + style integration: migrate `cinematic.jsx`'s hand-rolled camera/Grain/vignette onto NME, drive transitions from `Short.jsx`, extend the scene planner to emit preset names validated against the registry.
 - Roadmap after Phase 2 (user-defined, see README): 3 Style Bible, 4 Asset Engine, 5 Voice Engine, 6 Caption Engine, 7 UI, 8 Authentication & Firebase, 9 YouTube Upload, 10 Public Launch.
 - Backlog candidates (user-acknowledged, not scheduled):
   - Background music + SFX (deprioritized twice by user; skip unless asked).
@@ -57,7 +64,7 @@
   - `core/` — `store.js`, `pipeline.js`, `scenes.js`, `slides.js`, `render.js`
   - `api/` — `app.js`, `routes/{meta,voices,projects}.js`, `middleware.js`
 - **Rendering**: `backend/remotion/` — `Short.jsx`, `Slide.jsx`, `scenes.jsx`, `styles/{vox,luxury,cinematic}.jsx`, `theme.js`. Untouched by Phase 1.
-- **Motion Engine (NME)**: `backend/remotion/motion/` — registry, types, config, timing, camera/transitions/effects/presets, Remotion hooks. Architecture in `docs/motion-engine.md`. Not yet wired into any style (Phase 2B).
+- **Motion Engine (NME)**: `backend/remotion/motion/` — registry, types, config, timing, camera/transitions/effects/presets, Remotion hooks. Architecture in `docs/motion-engine.md`. Implemented: zoom, pan, fade, filmGrain (validated by the `MotionDemo` composition); the rest still `planned`. Not yet wired into any production style (Phase 2C).
 - **Project data**: `backend/data/projects/<id>/project.json` + assets. Server reads from disk on `/retry`, so editing project.json then retrying works.
 - **Content matrix**: modes = normal | realestate; languages = english | hinglish | hindi (hindi writes Devanagari and defaults to library voice "Viraj" — blocked on free tier, override via `HINDI_VOICE_ID`); styles = vox | luxury | cinematic (cinematic is reels-only; carousels reuse luxury slides); formats = reel | carousel.
 - **NOT a git repo.** No cloud services (zero budget).
@@ -88,4 +95,4 @@
 
 ## Next Planned Phase
 
-**Phase 2B — Motion Engine implementations + style integration.** Scope sketched in `docs/motion-engine.md` ("Phase 2B integration plan"). Do not start without user approval.
+**Phase 2C — remaining motion implementations + style integration.** Scope sketched in `docs/motion-engine.md` ("Phase 2C integration plan"). Note: the long-running backend server caches its Remotion bundle per process — restart it before the next API-triggered render so the bundle includes the Phase 2B motion code. Do not start Phase 2C without user approval.

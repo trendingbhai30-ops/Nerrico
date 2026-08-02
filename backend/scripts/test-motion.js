@@ -20,7 +20,9 @@ import {
 } from '../remotion/motion/index.js';
 
 let failures = 0;
+let total = 0;
 function check(name, cond) {
+  total++;
   if (cond) console.log(`  ok  ${name}`);
   else {
     failures++;
@@ -96,24 +98,73 @@ const fast = resolveMotion({ category: 'camera', kind: 'zoom', easing: 'linear',
 check('speed halves effective duration', motionProgress(fast, 30, 30) === 1);
 
 // --- dispatch fallbacks -----------------------------------------------------------
+// (zoom/pan/fade/filmGrain are implemented as of Phase 2B — fallback checks
+// now use still-planned kinds: orbit, slide, noise.)
 console.log('dispatch:');
-check('planned camera → shared identity', getCameraTransform(slow, 0.5) === CAMERA_IDENTITY);
+const drift = resolveMotion('cinematicDrift'); // orbit — still planned
+check('planned camera → shared identity', getCameraTransform(drift, 0.5) === CAMERA_IDENTITY);
 check('identity css renders', cameraTransformToCss(CAMERA_IDENTITY) === 'scale(1) translate(0px, 0px)');
-const hero = resolveMotion('heroReveal');
+const hero = resolveMotion('heroReveal'); // slide — still planned
 check('planned transition → shared identity', getTransitionState(hero, 0.5) === TRANSITION_IDENTITY);
-const grain = resolveMotion({ category: 'effect', kind: 'filmGrain' });
-check('planned effect → null (skip)', getEffectState(grain, 0.5) === null);
+const noise = resolveMotion({ category: 'effect', kind: 'noise' }); // still planned
+check('planned effect → null (skip)', getEffectState(noise, 0.5) === null);
 check('camera dispatch of non-camera motion → identity', getCameraTransform(hero, 0.5) === CAMERA_IDENTITY);
 
-// --- perf sanity: per-frame path allocates no new identity objects ---------------
+// --- implemented motions (Phase 2B: zoom, pan, fade, filmGrain) -------------------
+console.log('implemented motions:');
+check('zoom is implemented', motionRegistry.get('camera', 'zoom').status === 'implemented');
+const zoomIn = resolveMotion({ category: 'camera', kind: 'zoom', easing: 'linear' });
+const z0 = getCameraTransform(zoomIn, 0);
+const z1 = getCameraTransform(zoomIn, 1);
+check('zoom scales startScale → endScale', close(z0.scale, 1.06) && close(z1.scale, 1.22));
+check('zoom drifts across the move', z0.y === 0 && close(z1.y, 10));
+check('zoom exposes default origin', z0.origin === '50% 50%');
+const zoomOut = resolveMotion({ category: 'camera', kind: 'zoom', direction: 'out', easing: 'linear' });
+check('zoom out swaps the scale ramp', close(getCameraTransform(zoomOut, 0).scale, 1.22) && close(getCameraTransform(zoomOut, 1).scale, 1.06));
+const strongZoom = resolveMotion({ category: 'camera', kind: 'zoom', easing: 'linear', intensity: 2 });
+check('intensity scales the zoom', close(getCameraTransform(strongZoom, 1).scale, 1.44));
+const focalZoom = resolveMotion({ category: 'camera', kind: 'zoom', params: { origin: '30% 20%' } });
+check('zoom origin is configurable', getCameraTransform(focalZoom, 0.5).origin === '30% 20%');
+check('slowZoom preset now actually moves', getCameraTransform(resolveMotion('slowZoom'), 1).scale > 1.1);
+
+check('pan is implemented', motionRegistry.get('camera', 'pan').status === 'implemented');
+const panL = resolveMotion({ category: 'camera', kind: 'pan', direction: 'left', easing: 'linear' });
+check('pan left travels +x → −x', close(getCameraTransform(panL, 0).x, 30) && close(getCameraTransform(panL, 1).x, -30));
+check('pan holds constant zoom', close(getCameraTransform(panL, 0).scale, 1.18) && close(getCameraTransform(panL, 1).scale, 1.18));
+const panR = resolveMotion({ category: 'camera', kind: 'pan', direction: 'right', easing: 'linear' });
+check('pan right mirrors left', close(getCameraTransform(panR, 0).x, -30) && close(getCameraTransform(panR, 1).x, 30));
+const panU = resolveMotion({ category: 'camera', kind: 'pan', direction: 'up', easing: 'linear' });
+check('pan up travels on the y axis', close(getCameraTransform(panU, 0).y, 30) && close(getCameraTransform(panU, 1).y, -30));
+
+check('fade is implemented', motionRegistry.get('transition', 'fade').status === 'implemented');
+const fadeIn = resolveMotion({ category: 'transition', kind: 'fade', easing: 'linear' });
+check(
+  'fade in ramps opacity 0 → 1',
+  close(getTransitionState(fadeIn, 0).opacity, 0) && close(getTransitionState(fadeIn, 0.5).opacity, 0.5) && close(getTransitionState(fadeIn, 1).opacity, 1)
+);
+const fadeOut = resolveMotion({ category: 'transition', kind: 'fade', direction: 'out', easing: 'linear' });
+check('fade out ramps opacity 1 → 0', close(getTransitionState(fadeOut, 0).opacity, 1) && close(getTransitionState(fadeOut, 1).opacity, 0));
+
+check('filmGrain is implemented', motionRegistry.get('effect', 'filmGrain').status === 'implemented');
+const grain = resolveMotion({ category: 'effect', kind: 'filmGrain' });
+const g = getEffectState(grain, 0.4);
+check('filmGrain returns overlay state', !!g && g.kind === 'filmGrain' && close(g.opacity, 0.1) && close(g.baseFrequency, 0.8));
+check('filmGrain is deterministic', Number.isInteger(g.seed) && getEffectState(grain, 0.4).seed === g.seed && getEffectState(grain, 0.9).seed !== g.seed);
+check(
+  'filmGrain intensity scales, 0 disables',
+  close(getEffectState(resolveMotion({ category: 'effect', kind: 'filmGrain', intensity: 2 }), 0.4).opacity, 0.2) &&
+    getEffectState(resolveMotion({ category: 'effect', kind: 'filmGrain', intensity: 0 }), 0.4) === null
+);
+
+// --- perf sanity: fallback path allocates no new identity objects ---------------
 console.log('perf:');
-const a = getCameraTransform(slow, 0.1);
-const b = getCameraTransform(slow, 0.9);
+const a = getCameraTransform(drift, 0.1);
+const b = getCameraTransform(drift, 0.9);
 check('identity is reused, not re-created', a === b);
 
 console.log(GLOBAL_MOTION_DEFAULTS.easing === 'easeInOut' ? '\ndefaults: easeInOut ✓' : '\ndefaults changed!');
 if (failures) {
-  console.error(`\n${failures} FAILURE(S)`);
+  console.error(`\n${failures}/${total} FAILURE(S)`);
   process.exit(1);
 }
-console.log('ALL MOTION ENGINE CHECKS PASSED');
+console.log(`ALL ${total} MOTION ENGINE CHECKS PASSED`);

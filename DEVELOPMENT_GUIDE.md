@@ -48,7 +48,8 @@ Nerrico/
 │   │                            camera/, transitions/, effects/, presets/, hooks.js
 │   │                            (see docs/motion-engine.md)
 │   └── scripts/             ← preview-frames.js, preview-frames-branded.js, test-slides.js,
-│                              test-browser.js, test-render.js, test-motion.js (diagnostics)
+│                              test-browser.js, test-render.js, test-motion.js,
+│                              render-motion-demo.js (diagnostics)
 └── frontend/                ← Vite + React + TypeScript (USER'S domain — Antigravity)
     └── src/                 ← config/constants.ts, utils/, full API types, zero `any`
 ```

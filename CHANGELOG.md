@@ -4,6 +4,18 @@ All completed phases and major architectural changes, newest first. Add an entry
 
 ---
 
+## 2026-08-02 — Phase 2B: First Motion Implementations (PoC) ✅
+
+The first four NME motions went from `status: 'planned'` to `'implemented'` — purely by adding `apply` functions to the existing Phase 2A definitions. No architecture changes; production styles untouched.
+
+- **Camera `zoom`**: scale ramp startScale→endScale (swapped for direction `out`), vertical drift, configurable `origin` focal point (new param; `useCameraMotion` now also returns `transformOrigin`). Math ported from `cinematic.jsx` `cameraTransform()` — identical output at defaults with `intensity` as the old `amp`.
+- **Camera `pan`**: left/right/up/down travel of `distancePx` centered on 0, constant `holdScale` zoom, perpendicular `tiltPx` hand-held drift.
+- **Transition `fade`**: opacity ramp (in: t, out: 1−t); duration/delay/easing all come from the engine.
+- **Effect `filmGrain`**: same single-SVG-turbulence-rect technique as cinematic's proven Grain; seed derived from eased progress → animated but fully deterministic; `intensity: 0` returns null (overlay skipped). New `useEffectMotion` hook + `MotionEffect` overlay component in hooks.js (still the only React module, JSX-free via `createElement`).
+- **Bug found & fixed**: compositions importing only `hooks.js` never ran the preset registrations ("Unknown preset slowZoom" in the render bundle) — hooks.js now side-effect-imports `presets/index.js`.
+- **MotionDemo**: minimal validation composition (`remotion/MotionDemo.jsx`, registered in Root.jsx) — 4 labeled 3s segments (slow zoom, pan left, fade in+out, film grain) over a procedural grid; zero animation math outside the engine. `scripts/render-motion-demo.js` renders mp4 + 8 stills to `data/motion-demo/`. Frame-verified.
+- **Validated**: motion smoke test extended to 56 checks (all pass), demo RENDER OK + frames inspected, full regression re-render of `d2fe791fdb84` RENDER OK, frontend `tsc` + `vite build` clean, oxlint 1 pre-existing warning, both dev servers healthy.
+
 ## 2026-08-02 — Phase 2A: Motion Engine Foundation (NME) ✅
 
 Style-agnostic motion framework at `backend/remotion/motion/`. Purely additive — zero changes to existing compositions, pipeline, or API. Architecture doc: `docs/motion-engine.md`.

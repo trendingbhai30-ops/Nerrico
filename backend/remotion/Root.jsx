@@ -2,6 +2,7 @@ import React from 'react';
 import { Composition } from 'remotion';
 import { Short, CTA_SEC } from './Short.jsx';
 import { Slide } from './Slide.jsx';
+import { MotionDemo, MOTION_DEMO_SEGMENT_SEC, MOTION_DEMO_SEGMENTS } from './MotionDemo.jsx';
 
 const FPS = 30;
 
@@ -33,6 +34,15 @@ export function Root() {
             Math.ceil((props.durationSec + 1 + (props.branding ? CTA_SEC : 0)) * FPS)
           ),
         })}
+      />
+      <Composition
+        id="MotionDemo"
+        component={MotionDemo}
+        width={1080}
+        height={1920}
+        fps={FPS}
+        durationInFrames={FPS * MOTION_DEMO_SEGMENT_SEC * MOTION_DEMO_SEGMENTS}
+        defaultProps={{}}
       />
       <Composition
         id="Slide"
