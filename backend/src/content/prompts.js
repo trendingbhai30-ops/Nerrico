@@ -1,5 +1,6 @@
 import { MODES, getMode } from './modes.js';
 import { getStyleDef } from './styles.js';
+import { motionRegistry, resolveMotion } from '../../remotion/motion/index.js';
 
 // Language blocks are inserted into script/carousel prompts. English adds nothing
 // (the mode's audience string already says "English").
@@ -111,6 +112,55 @@ OUTPUT (strict): ONLY a JSON object, no markdown fences, no commentary:
 {"scenes":[{"type":"headline","start":0,"end":8,"emphasis":["wrong"],"scheme":0}, {"type":"stat","start":9,"end":15,"value":"90%","label":"of all cargo",${styleDef.useIcons ? '"icon":"📦",' : ''}"scheme":2}, ...]}`;
 }
 
+// Camera-move presets the planner may emit: registered presets that resolve to
+// an IMPLEMENTED camera kind. Sourced from the Motion Registry so the prompt
+// vocabulary grows automatically as Phase 2C implements more kinds — and the
+// planner is never offered a preset that would degrade to a static shot.
+function cameraPresetLegend() {
+  return motionRegistry
+    .list('preset')
+    .map((name) => ({ name, resolved: resolveMotion(name), description: motionRegistry.get('preset', name).description }))
+    .filter(({ resolved }) => resolved.category === 'camera' && resolved.def?.status === 'implemented')
+    .map(({ name, description }) => `"${name}" (${description})`)
+    .join(', ');
+}
+
+// Same idea for transitions/effects: only implemented kinds are offered.
+function implementedLegend(category) {
+  return motionRegistry
+    .list(category)
+    .map((name) => motionRegistry.get(category, name))
+    .filter((def) => def.status === 'implemented')
+    .map((def) => `"${def.name}" (${def.description})`)
+    .join(', ');
+}
+
+// Motion Engine bullets for shotsPrompt. Every value the planner emits from
+// these is validated against the Motion Registry in src/core/scenes.js —
+// unknown names are stripped there, and the engine degrades gracefully anyway.
+function motionFieldLines() {
+  const lines = [];
+  const presets = cameraPresetLegend();
+  if (presets) {
+    lines.push(
+      `- "motion": the camera move as a named preset — PREFERRED over "camera". One of: ${presets}. Match it to the shot's mood and vary it across shots; still fill in "camera" as the fallback.`
+    );
+  }
+  const transitions = implementedLegend('transition');
+  if (transitions) {
+    lines.push(
+      `- "transition": optional entrance for the shot. One of: ${transitions}. Use on roughly 1 in 3 shots where a softer entrance helps; omit the field for a straight cut.`
+    );
+  }
+  const effects = implementedLegend('effect');
+  if (effects) {
+    lines.push(
+      `- "effect": optional full-frame overlay. One of: ${effects}. The style already grades every shot — add this ONLY when a shot needs extra texture (archival flashback, decay). Omit otherwise.`
+    );
+  }
+  return lines.join('\n');
+}
+
 // Cinematic style: instead of typographic scenes, plan a shot list where every
 // shot is an AI-generated documentary still + camera move + sparse caption.
 export function shotsPrompt({ title, script, words }) {
@@ -135,6 +185,7 @@ For each shot provide:
 - "caption": 0-6 words shown in elegant serif over the image ("In 2000", "closed 1000 stores"). Punchy fragments, not sentences. Give a caption to roughly 2 of every 3 shots; leave it "" when the image speaks for itself.
 - "emphasis": 0-2 exact caption words to tint in the accent color.
 - "camera": one of "zoomIn", "zoomOut", "panLeft", "panRight" — vary it, never the same twice in a row. "zoomIn" for drama/tension, "zoomOut" for reveals, pans for places and passage of time.
+${motionFieldLines()}
 
 RULES:
 - 10 to 16 shots covering ALL words. Each shot covers roughly 5-14 words (2-5 seconds). Short shots = fast pacing = retention.
@@ -143,7 +194,7 @@ RULES:
 - The hook (shot 1) must be the most arresting image of all.
 
 OUTPUT (strict): ONLY a JSON object, no markdown fences, no commentary:
-{"shots":[{"start":0,"end":9,"imagePrompt":"low angle close-up of a weathered businessman...","query":"businessman dark office","icons":["💼"],"caption":"In 2000","emphasis":["2000"],"camera":"zoomIn"}, ...]}`;
+{"shots":[{"start":0,"end":9,"imagePrompt":"low angle close-up of a weathered businessman...","query":"businessman dark office","icons":["💼"],"caption":"In 2000","emphasis":["2000"],"camera":"zoomIn","motion":"slowZoom","transition":"fade"}, ...]}`;
 }
 
 export function carouselPrompt({ title, research, mode = 'normal', language = 'english' }) {

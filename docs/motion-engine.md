@@ -1,6 +1,6 @@
 # Nerrico Motion Engine (NME)
 
-> Architecture reference. Built in Phase 2A (2026-08-02). Phase 2B implemented the first four motions — camera `zoom` + `pan`, transition `fade`, effect `filmGrain` (proven by the `MotionDemo` composition); the rest land in Phase 2C+.
+> Architecture reference. Built in Phase 2A (2026-08-02). Phase 2B implemented the first four motions — camera `zoom` + `pan`, transition `fade`, effect `filmGrain` (proven by the `MotionDemo` composition). Phase 2.5 integrated the engine into the production pipeline: the styles, `Short.jsx`, the scene planner, and validation all run through it. The remaining kinds land in Phase 2C+.
 
 ## What it is
 
@@ -86,11 +86,20 @@ motionRegistry.has('preset', shot.motion); // validate planner output
 
 `node scripts/render-motion-demo.js` (from `backend/`, needs no server) — renders the `MotionDemo` composition (4 labeled segments: slow zoom, pan, fade, film grain) plus verification stills to `data/motion-demo/`. This is the visual proof that implemented motions work end-to-end in a real render.
 
-## Phase 2C integration plan (not done yet)
+`node scripts/test-motion-pipeline.js` (from `backend/`, needs no server) — Phase 2.5 integration test: real planner output through `validateShots` (invalid motion names must be stripped), registry resolution + timing in pure Node, then real Remotion stills through the `Short` composition for a legacy fixture (camera-only, pre-2.5 project shape) and a preset fixture. `--stills-only <name>` renders just the legacy-fixture stills to `data/motion-pipeline/<name>/` — used to capture `baseline/` before the style migrations; `current/` must match it (grain noise aside) after any motion/ or style change.
 
-Done in 2B: `zoom`/`pan` `apply` functions (ported from `cinematic.jsx`'s `cameraTransform()`), `fade`, `filmGrain`, the `MotionDemo` validation composition, and effect rendering via `useEffectMotion`/`MotionEffect`. Still remaining:
+## Integration (done in Phase 2.5)
 
-- Implement the remaining kinds: camera rotate/orbit/shake/focusPull, transitions slide/whip/flash/paperReveal/morph, effects blur/glow/noise/particles/vignette.
-- Migrate `cinematic.jsx` off its hand-rolled `cameraTransform`/Grain/vignette onto the engine (they are intentionally still duplicated until the styles switch over).
-- Drive scene wrappers in `Short.jsx` with `useTransitionMotion`.
-- Extend the scene-planner prompt to emit preset names, validated against the registry in `src/core/scenes.js`.
+The engine is now the production motion path end-to-end:
+
+- **Planner** — `shotsPrompt` (`src/content/prompts.js`) emits `motion` (preset), `transition`, and `effect` per shot. The offered vocabulary is generated from the registry and filtered to **implemented** kinds (`cameraPresetLegend`/`implementedLegend`), so it grows automatically as kinds are implemented and never offers a preset that would degrade to a static shot. Legacy `camera` stays as fallback.
+- **Validation** — `validateShots` (`src/core/scenes.js`) checks each emitted name with `motionRegistry.has()`; unknown names are stripped to `null` before they can reach a render.
+- **`Short.jsx`** — a `SceneMotion` wrapper applies the planner's entrance transition (0.4 s default) + full-frame effect to every scene of every style; absent fields resolve to the shared identity state, so pre-2.5 projects render unchanged.
+- **Cinematic** — hand-rolled `cameraTransform`/Grain/fade replaced by exact-port NME specs (`LEGACY_CAMERA_SPECS`, legacy curve registered as `quadInOut`, `GRAIN_DARK`/`GRAIN_PAPER`, `FADE_IN_SPEC`); planner presets honored per shot with designed-scene `amp` scaling the preset intensity.
+- **Vox** — PhotoScene Ken Burns replaced by `KEN_BURNS_SPEC` (linear zoom 1 → 1.07).
+
+Migration proven behaviour-preserving by pixel-comparing `data/motion-pipeline/current/` against the pre-migration `baseline/` (max delta ≤ 7/255 — grain/AA noise only).
+
+## Phase 2C plan (not done yet)
+
+Implement the remaining kinds: camera rotate/orbit/shake/focusPull, transitions slide/whip/flash/paperReveal/morph, effects blur/glow/noise/particles/vignette. Each is one `apply` function on its existing definition — the planner prompt, validation, and style wiring above pick it up automatically (e.g. presets `cinematicDrift` and `heroReveal` surface in the prompt once `orbit`/`slide` are implemented).

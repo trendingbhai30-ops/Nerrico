@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { AbsoluteFill, Easing, Img, interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
 import { LuxSlide } from './luxury.jsx';
+import { motionRegistry, registerEasing } from '../motion/index.js';
+import { MotionEffect, useCameraMotion, useTransitionMotion } from '../motion/hooks.js';
 
 // Cinematic documentary — designed, art-directed scenes rendered procedurally
 // in Remotion ("Moon channel" reference look): vintage newspaper mockups,
@@ -16,29 +18,46 @@ const PAPERRED = '#A31313'; // deep ink red (on paper)
 const SERIF = "'Playfair Display', 'Didot', 'Palatino Linotype', Georgia, serif";
 const DISPLAY = "'Haettenschweiler', 'Impact', 'Arial Narrow', sans-serif";
 
-// ---------- camera ----------
-function cameraTransform(camera, t, amp = 1) {
-  // amp < 1 tones the move down for designed scenes (paper, newspaper).
-  switch (camera) {
-    case 'zoomOut':
-      return { scale: 1 + (0.24 - 0.16 * t) * amp, x: 0, y: -8 * t * amp };
-    case 'panLeft':
-      return { scale: 1 + 0.18 * amp, x: (30 - 60 * t) * amp, y: 6 * t * amp };
-    case 'panRight':
-      return { scale: 1 + 0.18 * amp, x: (-30 + 60 * t) * amp, y: 6 * t * amp };
-    case 'zoomIn':
-    default:
-      return { scale: 1 + (0.06 + 0.16 * t) * amp, x: 0, y: 10 * t * amp };
+// ---------- camera (Nerrico Motion Engine) ----------
+// The old hand-rolled cameraTransform() curve was Easing.inOut(Easing.quad);
+// registered here so migrated moves stay frame-identical to pre-NME renders.
+registerEasing('quadInOut', (t) => (t < 0.5 ? 2 * t * t : 1 - 2 * (1 - t) * (1 - t)));
+
+// Exact ports of the legacy camera moves (old planner vocabulary). The old
+// `amp` designed-scene damping maps to NME `intensity`. zoomIn/pan use the
+// zoom/pan param defaults, which were themselves ported from these moves.
+const LEGACY_CAMERA_SPECS = Object.freeze({
+  zoomIn: Object.freeze({ category: 'camera', kind: 'zoom', easing: 'quadInOut' }),
+  zoomOut: Object.freeze({
+    category: 'camera',
+    kind: 'zoom',
+    direction: 'out',
+    easing: 'quadInOut',
+    params: Object.freeze({ startScale: 1.08, endScale: 1.24 }),
+  }),
+  panLeft: Object.freeze({ category: 'camera', kind: 'pan', direction: 'left', easing: 'quadInOut' }),
+  panRight: Object.freeze({ category: 'camera', kind: 'pan', direction: 'right', easing: 'quadInOut' }),
+});
+
+function buildCameraSpec(scene, amp) {
+  // Planner-emitted NME preset (validated against the registry upstream in
+  // src/core/scenes.js — unknown names never get here, but the engine would
+  // degrade to a static shot anyway).
+  if (scene.motion && motionRegistry.has('preset', scene.motion)) {
+    if (amp === 1) return scene.motion;
+    // Designed scenes tone the move down: scale the preset's own intensity.
+    const base = motionRegistry.get('preset', scene.motion).config?.intensity ?? 1;
+    return { preset: scene.motion, intensity: base * amp };
   }
+  const legacy = LEGACY_CAMERA_SPECS[scene.camera] || LEGACY_CAMERA_SPECS.zoomIn;
+  return amp === 1 ? legacy : { ...legacy, intensity: amp };
 }
 
+// Resolves ONCE per scene mount (spec memoized → useCameraMotion memoizes the
+// merge); per-frame work is the engine's number math only.
 function useShotCamera(scene, amp = 1) {
-  const frame = useCurrentFrame();
-  const { durationInFrames } = useVideoConfig();
-  const t = interpolate(frame, [0, Math.max(durationInFrames, 1)], [0, 1], {
-    easing: Easing.inOut(Easing.quad),
-  });
-  return cameraTransform(scene.camera, t, amp);
+  const spec = useMemo(() => buildCameraSpec(scene, amp), [scene, amp]);
+  return useCameraMotion(spec);
 }
 
 // Frame (within this shot) at which the shot-relative word index `rel` is spoken.
@@ -52,20 +71,20 @@ function useWordFrame(words, sceneStartSec) {
 }
 
 // ---------- global overlays ----------
-function Grain({ opacity = 0.1 }) {
-  const frame = useCurrentFrame();
-  return (
-    <AbsoluteFill style={{ opacity, mixBlendMode: 'overlay', pointerEvents: 'none' }}>
-      <svg width="100%" height="100%">
-        <filter id="grain">
-          <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" seed={frame % 19} stitchTiles="stitch" />
-          <feColorMatrix type="saturate" values="0" />
-        </filter>
-        <rect width="100%" height="100%" filter="url(#grain)" />
-      </svg>
-    </AbsoluteFill>
-  );
-}
+// Film grain now comes from the Motion Engine's filmGrain effect (same SVG
+// turbulence technique the old hand-rolled Grain used, same opacities).
+const GRAIN_DARK = Object.freeze({
+  category: 'effect',
+  kind: 'filmGrain',
+  easing: 'linear',
+  params: Object.freeze({ opacity: 0.1 }),
+});
+const GRAIN_PAPER = Object.freeze({
+  category: 'effect',
+  kind: 'filmGrain',
+  easing: 'linear',
+  params: Object.freeze({ opacity: 0.07 }),
+});
 
 // Woven fabric / halftone texture over every scene — the reference's signature.
 function Fabric({ dark = false }) {
@@ -257,7 +276,7 @@ function IconComposition({ icons }) {
 
 // ---------- kind: photo ----------
 function PhotoScene({ scene, words, sceneStartSec }) {
-  const cam = useShotCamera(scene, 1);
+  const { transform, transformOrigin } = useShotCamera(scene, 1);
   const wordFrame = useWordFrame(words, sceneStartSec);
   const captions = scene.captions?.length
     ? scene.captions
@@ -266,7 +285,7 @@ function PhotoScene({ scene, words, sceneStartSec }) {
       : [];
   return (
     <>
-      <AbsoluteFill style={{ transform: `scale(${cam.scale}) translate(${cam.x}px, ${cam.y}px)` }}>
+      <AbsoluteFill style={{ transform, transformOrigin }}>
         {scene.src ? (
           <Img src={scene.src} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
@@ -445,7 +464,7 @@ function Newspaper({ scene, seed }) {
 }
 
 function NewspaperScene({ scene, sceneIndex }) {
-  const cam = useShotCamera(scene, 0.55);
+  const { transform, transformOrigin } = useShotCamera(scene, 0.55);
   return (
     <>
       <WoodBackdrop />
@@ -453,7 +472,8 @@ function NewspaperScene({ scene, sceneIndex }) {
         style={{
           justifyContent: 'center',
           alignItems: 'center',
-          transform: `scale(${cam.scale}) translate(${cam.x}px, ${cam.y}px)`,
+          transform,
+          transformOrigin,
         }}
       >
         {/* paper underneath for the stacked look */}
@@ -497,7 +517,7 @@ function CrumpledPaper() {
 }
 
 function FramedScene({ scene, words, sceneStartSec }) {
-  const cam = useShotCamera(scene, 0.5);
+  const { transform, transformOrigin } = useShotCamera(scene, 0.5);
   const wordFrame = useWordFrame(words, sceneStartSec);
   const frame = useCurrentFrame();
   const settle = interpolate(frame, [0, 14], [0, 1], {
@@ -511,7 +531,8 @@ function FramedScene({ scene, words, sceneStartSec }) {
         style={{
           justifyContent: 'center',
           alignItems: 'center',
-          transform: `scale(${cam.scale}) translate(${cam.x}px, ${cam.y}px)`,
+          transform,
+          transformOrigin,
         }}
       >
         <div style={{ transform: `translateY(${(1 - settle) * -26}px)`, opacity: settle, textAlign: 'center' }}>
@@ -724,9 +745,17 @@ function SunburstScene({ scene, words, sceneStartSec }) {
 }
 
 // ---------- dispatcher ----------
+// Every scene enters on a 5-frame linear fade — same curve as the old
+// hand-rolled interpolate, now resolved through the engine.
+const FADE_IN_SPEC = Object.freeze({
+  category: 'transition',
+  kind: 'fade',
+  easing: 'linear',
+  durationInSeconds: 5 / 30,
+});
+
 export function CinScene({ scene, words, sceneStartSec, sceneIndex }) {
-  const frame = useCurrentFrame();
-  const fadeIn = interpolate(frame, [0, 5], [0, 1], { extrapolateRight: 'clamp' });
+  const fadeIn = useTransitionMotion(FADE_IN_SPEC, 'in');
   const kind = scene.kind || 'photo';
   const isPaper = kind === 'framed' || (kind === 'sunburst' && scene.burst === 'peach');
   let body;
@@ -736,10 +765,10 @@ export function CinScene({ scene, words, sceneStartSec, sceneIndex }) {
   else body = <PhotoScene scene={scene} words={words} sceneStartSec={sceneStartSec} />;
   return (
     <AbsoluteFill style={{ backgroundColor: '#000', overflow: 'hidden' }}>
-      <AbsoluteFill style={{ opacity: fadeIn }}>
+      <AbsoluteFill style={{ opacity: fadeIn.opacity }}>
         {body}
         <Fabric dark={!isPaper && kind !== 'newspaper'} />
-        <Grain opacity={isPaper ? 0.07 : 0.1} />
+        <MotionEffect spec={isPaper ? GRAIN_PAPER : GRAIN_DARK} />
       </AbsoluteFill>
     </AbsoluteFill>
   );
@@ -814,7 +843,7 @@ export function CinCtaScene({ branding }) {
           </div>
         ) : null}
       </div>
-      <Grain opacity={0.1} />
+      <MotionEffect spec={GRAIN_DARK} />
     </AbsoluteFill>
   );
 }

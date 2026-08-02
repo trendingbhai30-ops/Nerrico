@@ -80,7 +80,9 @@ Nerrico is developed in **explicit, sequential phases**. Each phase is scoped up
 >
 > ✅ **Phase 2A — Motion Engine Foundation** complete: style-agnostic motion framework (registry, presets, timing engine, camera/transition/effect architecture).
 >
-> ✅ **Phase 2B — First Motion Implementations** complete: slow zoom, pan, fade, and film grain implemented through the engine and proven by a rendered validation demo. Remaining motions and style integration follow in Phase 2C.
+> ✅ **Phase 2B — First Motion Implementations** complete: slow zoom, pan, fade, and film grain implemented through the engine and proven by a rendered validation demo.
+>
+> ✅ **Phase 2.5 — Motion Engine Integration** complete: the engine now powers the production styles (cinematic camera/grain/fade, vox Ken Burns), and the AI scene planner emits registry-validated motion presets, transitions, and effects. Remaining motion implementations follow in Phase 2C.
 
 **Upcoming phases:**
 
@@ -149,7 +151,8 @@ Additional design docs live in [`docs/`](docs/), including the backend API contr
 - [ ] Phase 2 — Motion Engine
   - [x] Phase 2A — Motion Engine foundation (registry, types, presets, timing)
   - [x] Phase 2B — First motion implementations, PoC (slow zoom, pan, fade, film grain + MotionDemo)
-  - [ ] Phase 2C — Remaining motions & style integration
+  - [x] Phase 2.5 — Motion Engine integration (styles migrated onto NME, planner emits registry-validated motion)
+  - [ ] Phase 2C — Remaining motion implementations
 - [ ] Phase 3 — Style Bible
 - [ ] Phase 4 — Asset Engine
 - [ ] Phase 5 — Voice Engine

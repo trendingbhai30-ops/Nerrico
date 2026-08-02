@@ -4,6 +4,21 @@ All completed phases and major architectural changes, newest first. Add an entry
 
 ---
 
+## 2026-08-02 — Phase 2.5: Motion Engine Integration ✅
+
+The NME went from proven-in-isolation to wired into the production pipeline: planner → validation → registry → engine → render. No new motions implemented (that's Phase 2C); all migrations are exact ports proven frame-identical against a captured baseline.
+
+- **Registry validation** (`src/core/scenes.js`): `validateShots` accepts planner-emitted `motion` (preset) / `transition` / `effect`, each checked via `motionRegistry.has()` — unknown names stripped to `null` (legacy `camera` fallback), so invalid planner output can never reach a render.
+- **Cinematic migration** (`styles/cinematic.jsx`): hand-rolled `cameraTransform`/Grain/fade-in replaced by the engine. Exact legacy ports (`LEGACY_CAMERA_SPECS`, old quad curve registered as `quadInOut`), designed-scene `amp` → NME `intensity`, grain via `MotionEffect`, scene fade via `useTransitionMotion`. Planner presets honored per shot with `amp`-scaled intensity on designed scenes.
+- **Vox migration** (`scenes.jsx`): PhotoScene Ken Burns → `KEN_BURNS_SPEC` (exact port: linear 1 → 1.07).
+- **`Short.jsx` `SceneMotion` wrapper**: planner-emitted entrance transition (0.4 s) + full-frame effect for every style; absent fields resolve to the shared identity state — pre-2.5 projects render unchanged.
+- **Planner emission** (`content/prompts.js`): `shotsPrompt` now offers `motion`/`transition`/`effect` with vocabulary sourced live from the registry, filtered to implemented kinds only (slowZoom/fastZoom/documentaryPan/newsPush, fade, filmGrain) — the prompt grows automatically as Phase 2C lands. Legacy `camera` kept as fallback.
+- **Integration test** `scripts/test-motion-pipeline.js`: 13 checks (validation stripping, registry resolution, timing) + real Remotion stills of a legacy fixture and a preset fixture; `--stills-only` captured the pre-migration baseline.
+- **Visual comparison**: post-migration stills vs baseline — max pixel delta ≤ 7/255 (grain/AA noise only), migration behaviour-preserving; preset path shows real camera travel.
+- **Validated**: motion test 56/56, pipeline test 13/13, fresh server + all endpoints healthy, full vox re-render of `d2fe791fdb84` RENDER OK, frontend `tsc` + `vite build` clean, oxlint no new warnings, both dev servers healthy.
+
+---
+
 ## 2026-08-02 — Phase 2B: First Motion Implementations (PoC) ✅
 
 The first four NME motions went from `status: 'planned'` to `'implemented'` — purely by adding `apply` functions to the existing Phase 2A definitions. No architecture changes; production styles untouched.

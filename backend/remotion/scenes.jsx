@@ -17,6 +17,7 @@ import {
   contrastOn,
   scheme,
 } from './theme.js';
+import { useCameraMotion } from './motion/hooks.js';
 
 const clean = (w) => w.toLowerCase().replace(/[^a-z0-9']/g, '');
 
@@ -336,12 +337,21 @@ export function TypewriterScene({ scene, words, sceneStartSec, sceneIndex }) {
 
 // ---------- photo: taped duotone archival photo ----------
 
+// Exact port of the old hand-rolled Ken Burns (linear scale 1 → 1.07 across
+// the scene), now resolved through the Motion Engine.
+const KEN_BURNS_SPEC = Object.freeze({
+  category: 'camera',
+  kind: 'zoom',
+  easing: 'linear',
+  params: Object.freeze({ startScale: 1, endScale: 1.07, driftY: 0 }),
+});
+
 export function PhotoScene({ scene, sceneIndex }) {
   const frame = useCurrentFrame();
-  const { fps, durationInFrames } = useVideoConfig();
+  const { fps } = useVideoConfig();
   const s = scheme(scene.scheme ?? sceneIndex);
   const dropIn = spring({ frame, fps, config: { damping: 13, stiffness: 120 }, durationInFrames: 20 });
-  const kenBurns = interpolate(frame, [0, durationInFrames], [1, 1.07]);
+  const kenBurns = useCameraMotion(KEN_BURNS_SPEC).camera.scale;
   const rot = random(`photo-rot-${sceneIndex}`) * 4 - 2;
   const captionIn = spring({ frame: frame - 10, fps, durationInFrames: 15 });
   return (

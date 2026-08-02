@@ -1,6 +1,7 @@
 import { askClaudeJson } from '../providers/claude.js';
 import { scenesPrompt, shotsPrompt } from '../content/prompts.js';
 import { getStyleDef } from '../content/styles.js';
+import { motionRegistry } from '../../remotion/motion/index.js';
 
 /**
  * Ask Claude to plan scenes, then validate/repair the result.
@@ -21,6 +22,12 @@ export function planScenes({ title, script, words, style = 'vox' }) {
 
 const CAMERAS = ['zoomIn', 'zoomOut', 'panLeft', 'panRight'];
 
+// Planner-emitted motion fields are checked against the Motion Registry here —
+// an unregistered name is stripped to null (the compositions then fall back to
+// the legacy camera move), so an invalid preset can never reach a render.
+const registeredOrNull = (category, name) =>
+  typeof name === 'string' && motionRegistry.has(category, name) ? name : null;
+
 export function validateShots(data, wordCount) {
   const shots = data?.shots || data?.scenes;
   if (!Array.isArray(shots) || shots.length === 0) {
@@ -36,6 +43,9 @@ export function validateShots(data, wordCount) {
     caption: s.caption ? String(s.caption).slice(0, 60) : '',
     emphasis: Array.isArray(s.emphasis) ? s.emphasis.map(String).slice(0, 2) : [],
     camera: CAMERAS.includes(s.camera) ? s.camera : CAMERAS[i % CAMERAS.length],
+    motion: registeredOrNull('preset', s.motion),
+    transition: registeredOrNull('transition', s.transition),
+    effect: registeredOrNull('effect', s.effect),
   }));
   for (const s of scenes) {
     if (!Number.isFinite(s.start) || !Number.isFinite(s.end)) {
