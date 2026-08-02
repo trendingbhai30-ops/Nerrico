@@ -30,9 +30,10 @@ export function useResolvedMotion(spec, context) {
  * Camera state + ready-to-use CSS transform for the current frame.
  * Identity (no movement) until the requested kind is implemented, so styles
  * can adopt this API today. Apply BOTH `transform` and `transformOrigin` to
- * the same wrapper so zoom focal points work.
+ * the same wrapper so zoom focal points work; apply `filter` too if the
+ * style should support focus pulls (it is '' for every other kind).
  * @param {import('./types.js').MotionSpec | string | null} spec
- * @returns {{camera: import('./types.js').CameraTransform, transform: string, transformOrigin: string, t: number}}
+ * @returns {{camera: import('./types.js').CameraTransform, transform: string, transformOrigin: string, filter: string, t: number}}
  */
 export function useCameraMotion(spec) {
   const frame = useCurrentFrame();
@@ -44,6 +45,7 @@ export function useCameraMotion(spec) {
     camera,
     transform: cameraTransformToCss(camera),
     transformOrigin: camera.origin || '50% 50%',
+    filter: camera.blur ? `blur(${camera.blur}px)` : '',
     t,
   };
 }

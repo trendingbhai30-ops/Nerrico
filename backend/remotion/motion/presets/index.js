@@ -78,6 +78,66 @@ motionRegistry.register('preset', {
 });
 
 motionRegistry.register('preset', {
+  name: 'slowRoll',
+  description: 'Barely-perceptible roll — quiet unease and tension',
+  config: {
+    category: 'camera',
+    kind: 'rotate',
+    direction: 'cw',
+    easing: 'easeInOut',
+    intensity: 0.7,
+  },
+});
+
+motionRegistry.register('preset', {
+  name: 'pushIn',
+  description: 'Physical dolly toward the subject — mounting drama',
+  config: {
+    category: 'camera',
+    kind: 'push',
+    direction: 'in',
+    easing: 'easeInOut',
+    intensity: 0.8,
+  },
+});
+
+motionRegistry.register('preset', {
+  name: 'pullBack',
+  description: 'Dolly away from the subject — reveals and aftermath',
+  config: {
+    category: 'camera',
+    kind: 'push',
+    direction: 'out',
+    easing: 'easeInOut',
+    intensity: 0.8,
+  },
+});
+
+motionRegistry.register('preset', {
+  name: 'impactShake',
+  description: 'Short decaying shake — beat hits and shocking facts',
+  config: {
+    category: 'camera',
+    kind: 'shake',
+    easing: 'linear',
+    durationInSeconds: 0.9,
+    intensity: 0.8,
+  },
+});
+
+motionRegistry.register('preset', {
+  name: 'rackFocus',
+  description: 'Blur resolving to sharp — openings and slow reveals',
+  config: {
+    category: 'camera',
+    kind: 'focusPull',
+    direction: 'in',
+    easing: 'easeOut',
+    durationInSeconds: 1.2,
+  },
+});
+
+motionRegistry.register('preset', {
   name: 'heroReveal',
   description: 'Subject slides up into place with a settle — openings, titles',
   config: {

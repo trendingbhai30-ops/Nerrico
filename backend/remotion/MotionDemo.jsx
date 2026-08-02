@@ -31,7 +31,8 @@ const GRAIN_SPEC = Object.freeze({
 
 // A backdrop where movement is impossible to miss: grid lines, a centered
 // disc, and corner markers (so zoom origin and pan direction read clearly).
-function Backdrop() {
+// Exported for reuse by CameraDemo.jsx (Phase 2C).
+export function Backdrop() {
   return (
     <AbsoluteFill style={{ backgroundColor: '#182432' }}>
       <AbsoluteFill
@@ -72,7 +73,7 @@ function Backdrop() {
   );
 }
 
-function Label({ children }) {
+export function Label({ children }) {
   return (
     <div
       style={{
@@ -94,11 +95,13 @@ function Label({ children }) {
 }
 
 // Segments 1 & 2: the camera hook drives the wrapper transform. No math here.
-function CameraSegment({ spec, label }) {
-  const { transform, transformOrigin } = useCameraMotion(spec);
+// `filter` is applied too so focus pulls work (it is '' for every other kind).
+// Exported for reuse by CameraDemo.jsx (Phase 2C).
+export function CameraSegment({ spec, label }) {
+  const { transform, transformOrigin, filter } = useCameraMotion(spec);
   return (
     <AbsoluteFill style={{ overflow: 'hidden' }}>
-      <AbsoluteFill style={{ transform, transformOrigin }}>
+      <AbsoluteFill style={{ transform, transformOrigin, filter: filter || undefined }}>
         <Backdrop />
       </AbsoluteFill>
       <Label>{label}</Label>

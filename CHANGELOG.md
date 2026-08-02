@@ -4,6 +4,22 @@ All completed phases and major architectural changes, newest first. Add an entry
 
 ---
 
+## 2026-08-02 — Phase 2C: Advanced Camera Motion Library ✅
+
+Every camera kind in the NME vocabulary is now implemented — the camera library is complete (7 kinds, all `status: 'implemented'`). Purely additive: one new kind + `apply` functions on existing definitions; zero architecture changes.
+
+- **Camera `rotate`**: slow roll around a configurable pivot (`origin`), linear ramp 0 → ±`degrees`, constant `holdScale` keeps corners covered (~±7° at the default 1.12).
+- **Camera `orbit`**: parametric-ellipse drift — θ sweeps ±`revolutions`·2π and position is offset by (cos θ − 1, sin θ), so t=0 is exactly (0,0) (no mount jump) and a full revolution returns home. Pure trig of eased progress, zero state. Unlocks the `cinematicDrift` preset.
+- **Camera `push`** (NEW kind, 7th in the registry): physical dolly via CSS-perspective math — `scale = P/(P−z)`, so growth accelerates hyperbolically as the camera closes in (vs zoom's linear lerp). `out` settles back to exactly scale 1 (no edge reveal); travel clamped to 0.85·P so hostile params can't reach infinite scale.
+- **Camera `shake`**: seeded sum-of-sines noise (NOT random) — deterministic per seed, incommensurate frequency ratios prevent visible looping, `(1−t)^(3·decay)` envelope starts at full impact and lands at exact rest (displacement AND micro-roll).
+- **Camera `focusPull`**: rack-focus blur ramp (7px → 0 by default, direction-swappable) + lens-breathing zoom; blur below 0.05px snaps to 0 so the sharp end drops the GPU filter entirely. `useCameraMotion` now returns `filter`; cinematic's three camera-driven scenes apply it.
+- **5 new presets** (11 total, 10 camera): slowRoll, pushIn, pullBack, impactShake, rackFocus. The Phase 2.5 registry-sourced planner vocabulary picked all of them up with zero prompt-code changes.
+- **CameraDemo**: `remotion/CameraDemo.jsx` (6 labeled segments reusing MotionDemo's exported Backdrop/CameraSegment; zero hand-rolled animation math) + `scripts/render-camera-demo.js` → `data/camera-demo/` mp4 + 12 stills. Frame-verified.
+- **FFmpeg investigation**: `.bmp` frame extraction fails ("Automatic encoder selection failed … codec bmp … Encoder not found") because Remotion's bundled ffmpeg — the only ffmpeg on the machine — is a minimal build with `--disable-encoders` and an allowlist (png, mjpeg, libx264/x265, …) that omits bmp; its muxer list also omits rawvideo. Not a Motion Engine regression and nothing to fix: renders use libx264 and stills use png, both compiled in. Rule: extract frames as `.png`; pixel-compare with `pngjs` (already in backend node_modules).
+- **Validated**: motion smoke test **90/90** (was 56; includes per-kind math checks + "every camera preset the planner is offered resolves to an implemented kind"), pipeline test 13/13, baseline pixel-compare max per-channel delta 8/255 (grain/AA noise, no structural change), fresh server + all endpoints healthy, full re-render of `d2fe791fdb84` RENDER OK, frontend `tsc` + `vite build` clean, oxlint no new warnings.
+
+---
+
 ## 2026-08-02 — Phase 2.5: Motion Engine Integration ✅
 
 The NME went from proven-in-isolation to wired into the production pipeline: planner → validation → registry → engine → render. No new motions implemented (that's Phase 2C); all migrations are exact ports proven frame-identical against a captured baseline.

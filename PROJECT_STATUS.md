@@ -1,11 +1,11 @@
 # PROJECT_STATUS.md
 
 > Snapshot of where Nerrico stands right now. Update this file at the end of every phase.
-> Last updated: **2026-08-02** (after Phase 2.5 — Motion Engine integration)
+> Last updated: **2026-08-02** (after Phase 2C — Advanced Camera Motion Library)
 
 ## Current Phase
 
-**Phase 2.5 (Motion Engine integration) is COMPLETE and validated.** The NME is now wired into the production styles and the scene planner. Waiting on user approval before starting Phase 2C (remaining motion implementations: rotate/orbit/shake/focusPull, remaining transitions/effects).
+**Phase 2C (Advanced Camera Motion Library) is COMPLETE and validated.** All 7 camera kinds are implemented and in the planner vocabulary (10 camera presets). Waiting on user approval before starting Phase 2D (remaining transitions slide/whip/flash/paperReveal/morph, effects blur/glow/noise/particles/vignette).
 
 ## Completed Work
 
@@ -50,9 +50,18 @@
 - **Visual comparison**: post-migration `current/` stills vs `baseline/` — max per-channel pixel delta ≤ 7/255, uniform across the frame (grain-seed/AA noise only, no structural change). Preset-path stills show real camera travel between mid/late frame pairs. Migration preserved behaviour.
 - **Validated**: motion smoke test 56/56, pipeline test 13/13, server restarted fresh + all endpoints healthy, full re-render of `d2fe791fdb84` (vox — exercises migrated Ken Burns) RENDER OK, frontend `tsc` + `vite build` clean, oxlint: no new warnings (5 findings all verified pre-existing via the pre-phase-1 backup).
 
+### Phase 2C — Advanced Camera Motion Library (2026-08-02)
+
+- **All camera kinds implemented** (7 total, all `status: 'implemented'`): Phase 2B's zoom/pan joined by **rotate** (slow roll around a pivot, corner-covering hold zoom), **orbit** (parametric-ellipse parallax drift anchored at (0,0) — full revolution returns home; unlocks the `cinematicDrift` preset), **push** (NEW kind — physical dolly via CSS-perspective math `scale = P/(P−z)`, hyperbolic acceleration unlike zoom's linear lerp, travel clamped so hostile params can't blow up the scale), **shake** (seeded sum-of-sines impact shake, incommensurate frequencies so it never visibly loops, `(1−t)^(3·decay)` envelope lands at exact rest, fully deterministic per seed), **focusPull** (rack-focus blur ramp + lens-breathing zoom; sub-0.05px blur snaps to 0 so the filter is dropped when sharp).
+- **`useCameraMotion` now returns `filter`** (a `blur(px)` CSS string, '' for every other kind); cinematic's PhotoScene/NewspaperScene/FramedScene apply it, so planner-emitted focus pulls work in production.
+- **5 new presets** (11 total; 10 camera presets in the planner vocabulary): slowRoll, pushIn, pullBack, impactShake, rackFocus — plus cinematicDrift now actually moves. Planner prompt picked them up automatically (Phase 2.5 registry-sourced vocabulary; zero prompt-code changes).
+- **CameraDemo** (`remotion/CameraDemo.jsx` + `scripts/render-camera-demo.js`): 6 labeled segments (rotate, orbit, push in, pull out, focus pull, shake) over the MotionDemo grid backdrop; renders mp4 + 12 stills to `data/camera-demo/`. Rendered and frame-verified.
+- **Validated**: motion smoke test 90/90 (was 56), pipeline test 13/13, baseline pixel-compare max delta 8/255 (grain/AA noise only), fresh server + endpoints healthy, full re-render of `d2fe791fdb84` RENDER OK, frontend `tsc` + `vite build` clean, oxlint no new warnings.
+- **FFmpeg finding**: frame extraction to `.bmp` fails ("encoder not found") because Remotion's bundled ffmpeg is a minimal build (`--disable-encoders` + allowlist: png/mjpeg/x264/…) with no bmp encoder, and no system ffmpeg exists. Local tooling constraint only — renders (libx264) and stills (png) are unaffected. Always extract frames as `.png`; for pixel comparisons use `pngjs` (already in backend node_modules).
+
 ## Pending Phases
 
-- **Phase 2C** — remaining motion implementations: camera rotate/orbit/shake/focusPull, transitions slide/whip/flash/paperReveal/morph, effects blur/glow/noise/particles/vignette. Style integration and planner emission are DONE (Phase 2.5) — prompt vocabulary and presets (cinematicDrift, heroReveal) surface automatically as their kinds get implemented.
+- **Phase 2D** — remaining motion implementations: transitions slide/whip/flash/paperReveal/morph, effects blur/glow/noise/particles/vignette. Style integration and planner emission are DONE (Phase 2.5) — prompt vocabulary and the heroReveal preset surface automatically as their kinds get implemented.
 - Roadmap after Phase 2 (user-defined, see README): 3 Style Bible, 4 Asset Engine, 5 Voice Engine, 6 Caption Engine, 7 UI, 8 Authentication & Firebase, 9 YouTube Upload, 10 Public Launch.
 - Backlog candidates (user-acknowledged, not scheduled):
   - Background music + SFX (deprioritized twice by user; skip unless asked).
@@ -75,10 +84,10 @@
   - `core/` — `store.js`, `pipeline.js`, `scenes.js`, `slides.js`, `render.js`
   - `api/` — `app.js`, `routes/{meta,voices,projects}.js`, `middleware.js`
 - **Rendering**: `backend/remotion/` — `Short.jsx`, `Slide.jsx`, `scenes.jsx`, `styles/{vox,luxury,cinematic}.jsx`, `theme.js`. Untouched by Phase 1.
-- **Motion Engine (NME)**: `backend/remotion/motion/` — registry, types, config, timing, camera/transitions/effects/presets, Remotion hooks. Architecture in `docs/motion-engine.md`. Implemented: zoom, pan, fade, filmGrain; the rest still `planned` (Phase 2C). **Integrated (Phase 2.5)**: cinematic camera/grain/fade and vox Ken Burns run through the engine; `Short.jsx` applies planner-emitted transitions/effects to every style; the shot planner emits registry-validated `motion`/`transition`/`effect` fields. Integration test: `scripts/test-motion-pipeline.js` (+ visual baseline in `data/motion-pipeline/`).
+- **Motion Engine (NME)**: `backend/remotion/motion/` — registry, types, config, timing, camera/transitions/effects/presets, Remotion hooks. Architecture in `docs/motion-engine.md`. Implemented: ALL 7 camera kinds (zoom, pan, rotate, orbit, push, shake, focusPull), transition fade, effect filmGrain; remaining transitions/effects still `planned` (Phase 2D). **Integrated (Phase 2.5)**: cinematic camera/grain/fade and vox Ken Burns run through the engine; `Short.jsx` applies planner-emitted transitions/effects to every style; the shot planner emits registry-validated `motion`/`transition`/`effect` fields. Integration test: `scripts/test-motion-pipeline.js` (+ visual baseline in `data/motion-pipeline/`). Camera demo: `scripts/render-camera-demo.js` → `data/camera-demo/`.
 - **Project data**: `backend/data/projects/<id>/project.json` + assets. Server reads from disk on `/retry`, so editing project.json then retrying works.
 - **Content matrix**: modes = normal | realestate; languages = english | hinglish | hindi (hindi writes Devanagari and defaults to library voice "Viraj" — blocked on free tier, override via `HINDI_VOICE_ID`); styles = vox | luxury | cinematic (cinematic is reels-only; carousels reuse luxury slides); formats = reel | carousel.
-- **NOT a git repo.** No cloud services (zero budget).
+- **Git repo initialized** (local only, one commit per phase since Phase 1). No cloud services (zero budget).
 
 ## APIs / Providers Integrated
 
@@ -94,7 +103,8 @@
 
 ## Known Technical Debt
 
-- No git repo — only backup is `nerrico-pre-phase1-backup.tgz`. Should be initialized.
+- Git repo is local-only (no remote) — `nerrico-pre-phase1-backup.tgz` is the only other backup.
+- Remotion's bundled ffmpeg (the only ffmpeg on this machine) has NO `bmp` encoder (minimal `--disable-encoders` build; png/mjpeg/x264 only) and no `rawvideo` muxer — extract frames as `.png` only; for pixel comparisons use `pngjs` from backend node_modules.
 - No SFX/background music (intentionally skipped per user).
 - Kastoori logo (`backend/config/kastoori-logo.png`) has a dark background, NOT transparent — may look like a dark box on light/cream slides; verify on first branded light render.
 - Pollinations images occasionally contain garbled AI text in signage; actual resolution below 1080x1920 (upscales acceptably).
@@ -106,4 +116,4 @@
 
 ## Next Planned Phase
 
-**Phase 2C — remaining motion implementations** (camera rotate/orbit/shake/focusPull, transitions slide/whip/flash/paperReveal/morph, effects blur/glow/noise/particles/vignette). Integration is done — each new implementation is one `apply` function and automatically becomes available to the planner prompt and all styles. Note: the long-running backend server caches its Remotion bundle per process — restart it after motion/ changes (freshly restarted at the end of Phase 2.5). Do not start Phase 2C without user approval.
+**Phase 2D — remaining motion implementations** (transitions slide/whip/flash/paperReveal/morph, effects blur/glow/noise/particles/vignette). Integration is done — each new implementation is one `apply` function and automatically becomes available to the planner prompt and all styles (heroReveal surfaces once `slide` lands). Note: the long-running backend server caches its Remotion bundle per process — restart it after motion/ changes (freshly restarted at the end of Phase 2C). Do not start Phase 2D without user approval.

@@ -276,7 +276,7 @@ function IconComposition({ icons }) {
 
 // ---------- kind: photo ----------
 function PhotoScene({ scene, words, sceneStartSec }) {
-  const { transform, transformOrigin } = useShotCamera(scene, 1);
+  const { transform, transformOrigin, filter } = useShotCamera(scene, 1);
   const wordFrame = useWordFrame(words, sceneStartSec);
   const captions = scene.captions?.length
     ? scene.captions
@@ -285,7 +285,7 @@ function PhotoScene({ scene, words, sceneStartSec }) {
       : [];
   return (
     <>
-      <AbsoluteFill style={{ transform, transformOrigin }}>
+      <AbsoluteFill style={{ transform, transformOrigin, filter: filter || undefined }}>
         {scene.src ? (
           <Img src={scene.src} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
@@ -464,7 +464,7 @@ function Newspaper({ scene, seed }) {
 }
 
 function NewspaperScene({ scene, sceneIndex }) {
-  const { transform, transformOrigin } = useShotCamera(scene, 0.55);
+  const { transform, transformOrigin, filter } = useShotCamera(scene, 0.55);
   return (
     <>
       <WoodBackdrop />
@@ -474,6 +474,7 @@ function NewspaperScene({ scene, sceneIndex }) {
           alignItems: 'center',
           transform,
           transformOrigin,
+          filter: filter || undefined,
         }}
       >
         {/* paper underneath for the stacked look */}
@@ -517,7 +518,7 @@ function CrumpledPaper() {
 }
 
 function FramedScene({ scene, words, sceneStartSec }) {
-  const { transform, transformOrigin } = useShotCamera(scene, 0.5);
+  const { transform, transformOrigin, filter } = useShotCamera(scene, 0.5);
   const wordFrame = useWordFrame(words, sceneStartSec);
   const frame = useCurrentFrame();
   const settle = interpolate(frame, [0, 14], [0, 1], {
@@ -533,6 +534,7 @@ function FramedScene({ scene, words, sceneStartSec }) {
           alignItems: 'center',
           transform,
           transformOrigin,
+          filter: filter || undefined,
         }}
       >
         <div style={{ transform: `translateY(${(1 - settle) * -26}px)`, opacity: settle, textAlign: 'center' }}>
