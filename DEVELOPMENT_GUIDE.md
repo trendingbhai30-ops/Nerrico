@@ -11,7 +11,7 @@
 - **Visuals**: Remotion compositions driven by a JSON scene/shot spec; word timestamps drive scene durations. Three styles: `vox` (paper-cutout explainer), `luxury` (real-estate charcoal/cream/gold), `cinematic` (documentary reel with AI-generated images).
 - **Render**: local, on the user's PC (RTX 4050, 16 GB RAM, Intel Core Ultra 210H). ~1 min per reel.
 
-Two content modes: `normal` (Vox-style educational Shorts, English/US audience) and `realestate` ("Kastoori Real Estate" — Indian buyer/investor tips, English or Hinglish, branding applied visually, never pitched in the script).
+Two content modes: `normal` (Vox-style educational Shorts, English/US audience) and `realestate` ("Kastoori Real Estate" — Indian buyer/investor tips, branding applied visually, never pitched in the script). Languages: `english`, `hinglish`, `hindi` (hindi's default voice is free-tier-blocked; override via `HINDI_VOICE_ID`).
 
 **People**: the user (Naitik) is 14 years old with zero budget — never propose paid services (AWS, paid APIs, Vercel). Claude builds the **backend/pipeline only**; the user builds the **frontend** themselves with the Antigravity IDE. Don't rewrite frontend features unless asked; API-type/config plumbing is fine.
 
@@ -24,6 +24,7 @@ Nerrico/
 ├── CHANGELOG.md             ← phase history
 ├── docs/
 │   ├── api-contract.md      ← backend API contract (source of truth for endpoints)
+│   ├── motion-engine.md     ← Nerrico Motion Engine (NME) architecture reference
 │   ├── scriptwriting-principles.md
 │   └── antigravity-prompt.md
 ├── assets/                  ← voice samples etc.
@@ -42,9 +43,12 @@ Nerrico/
 │   │   ├── core/            ← store.js, pipeline.js, scenes.js, slides.js, render.js
 │   │   └── api/             ← app.js, middleware.js, routes/{meta,voices,projects}.js
 │   ├── remotion/            ← compositions: Short.jsx, Slide.jsx, scenes.jsx,
-│   │   └── styles/          ←   vox.jsx, luxury.jsx, cinematic.jsx (+ index.js, theme.js)
+│   │   ├── styles/          ←   vox.jsx, luxury.jsx, cinematic.jsx (+ index.js, theme.js)
+│   │   └── motion/          ←   Nerrico Motion Engine (NME): registry, config, timing,
+│   │                            camera/, transitions/, effects/, presets/, hooks.js
+│   │                            (see docs/motion-engine.md)
 │   └── scripts/             ← preview-frames.js, preview-frames-branded.js, test-slides.js,
-│                              test-browser.js, test-render.js (diagnostics/preview tools)
+│                              test-browser.js, test-render.js, test-motion.js (diagnostics)
 └── frontend/                ← Vite + React + TypeScript (USER'S domain — Antigravity)
     └── src/                 ← config/constants.ts, utils/, full API types, zero `any`
 ```
@@ -59,6 +63,7 @@ Nerrico/
 - **LLM JSON output**: never trust raw output — parse via `extractJson` (src/utils/json.js) and use `askClaudeJson` (providers/claude.js) which retries on invalid JSON. Scene specs are validated/auto-repaired in `core/scenes.js`.
 - **New image providers**: one file per provider under `src/providers/images/`, registered in its `index.js`.
 - **Prompts** live in `src/content/prompts.js`. When refactoring, keep prompts byte-identical unless the change is deliberately about prompt quality.
+- **Motion (NME)**: new motions are one `motionRegistry.register()` call in the right category module (`remotion/motion/{camera,transitions,effects}/index.js`) + an `apply(t, motion)` function; presets are config-only in `presets/index.js`. Only `hooks.js` may import React/Remotion — everything else stays Node-testable. Run `node scripts/test-motion.js` after any `motion/` change. Full architecture: `docs/motion-engine.md`.
 - **Frontend API base**: `VITE_API_BASE_URL`, but a localStorage override wins. Keep both working.
 
 ## Architecture Principles

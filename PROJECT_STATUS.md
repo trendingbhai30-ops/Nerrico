@@ -1,11 +1,11 @@
 # PROJECT_STATUS.md
 
 > Snapshot of where Nerrico stands right now. Update this file at the end of every phase.
-> Last updated: **2026-08-02** (after Phase 1 — SaaS foundation refactor)
+> Last updated: **2026-08-02** (after Phase 2A — Motion Engine foundation)
 
 ## Current Phase
 
-**Phase 1 (SaaS foundation) is COMPLETE and validated.** Waiting on user review before starting Phase 2.
+**Phase 2A (Motion Engine foundation) is COMPLETE and validated.** Waiting on user approval before starting Phase 2B (motion implementations + style integration).
 
 ## Completed Work
 
@@ -24,9 +24,18 @@
 - Validated: `tsc` + `vite build` clean, oxlint (1 pre-existing warning), server E2E smoke on all endpoints, full re-render of project `d2fe791fdb84` succeeded.
 - Pre-refactor backup: `Nerrico/nerrico-pre-phase1-backup.tgz`. Old root `server.js` deleted.
 
+### Phase 2A — Motion Engine foundation (2026-08-02)
+
+- **Nerrico Motion Engine (NME)** built at `backend/remotion/motion/` — style-agnostic motion framework. Full architecture doc: `docs/motion-engine.md`.
+- Central registry (camera/transition/effect/preset), JSDoc type contracts, config resolution chain (global defaults → preset → definition defaults → per-use overrides, resolved once per scene), timing engine (linear/easeIn/easeOut/easeInOut + `registerEasing` for future curves), Remotion hooks adapter (`hooks.js`, the only React-importing module).
+- Declared (config-only, `status: 'planned'`): 6 camera kinds (zoom, pan, rotate, orbit, shake, focusPull), 6 transitions (fade, slide, whip, flash, paperReveal, morph), 6 effects (filmGrain, blur, glow, noise, particles, vignette), 6 presets (slowZoom, fastZoom, documentaryPan, cinematicDrift, newsPush, heroReveal). **No implementations yet by design** — dispatchers degrade to shared identity states so unimplemented motion can never break a render.
+- Purely additive: zero changes to existing compositions, pipeline, or API. Smoke test: `backend/scripts/test-motion.js` (36 checks, all passing).
+- Validated: motion test PASS, live server endpoints healthy, full standalone re-render RENDER OK, frontend `tsc`+`vite build` clean, oxlint 1 pre-existing warning only.
+
 ## Pending Phases
 
-- **Phase 2** — not yet defined; user will decide after reviewing Phase 1.
+- **Phase 2B** — implement motion `apply` functions (start by porting `cinematic.jsx`'s `cameraTransform` into `zoom`/`pan`), migrate hand-rolled Grain/vignette into `effects/`, drive transitions from `Short.jsx`, extend the scene planner to emit preset names validated against the registry.
+- Roadmap after Phase 2 (user-defined, see README): 3 Style Bible, 4 Asset Engine, 5 Voice Engine, 6 Caption Engine, 7 UI, 8 Authentication & Firebase, 9 YouTube Upload, 10 Public Launch.
 - Backlog candidates (user-acknowledged, not scheduled):
   - Background music + SFX (deprioritized twice by user; skip unless asked).
   - User accent-check of Adam speaking Hinglish (project `c54ed751b120`).
@@ -48,8 +57,9 @@
   - `core/` — `store.js`, `pipeline.js`, `scenes.js`, `slides.js`, `render.js`
   - `api/` — `app.js`, `routes/{meta,voices,projects}.js`, `middleware.js`
 - **Rendering**: `backend/remotion/` — `Short.jsx`, `Slide.jsx`, `scenes.jsx`, `styles/{vox,luxury,cinematic}.jsx`, `theme.js`. Untouched by Phase 1.
+- **Motion Engine (NME)**: `backend/remotion/motion/` — registry, types, config, timing, camera/transitions/effects/presets, Remotion hooks. Architecture in `docs/motion-engine.md`. Not yet wired into any style (Phase 2B).
 - **Project data**: `backend/data/projects/<id>/project.json` + assets. Server reads from disk on `/retry`, so editing project.json then retrying works.
-- **Content matrix**: modes = normal | realestate; languages = english | hinglish; styles = vox | luxury | cinematic (cinematic is reels-only; carousels reuse luxury slides); formats = reel | carousel.
+- **Content matrix**: modes = normal | realestate; languages = english | hinglish | hindi (hindi writes Devanagari and defaults to library voice "Viraj" — blocked on free tier, override via `HINDI_VOICE_ID`); styles = vox | luxury | cinematic (cinematic is reels-only; carousels reuse luxury slides); formats = reel | carousel.
 - **NOT a git repo.** No cloud services (zero budget).
 
 ## APIs / Providers Integrated
@@ -78,4 +88,4 @@
 
 ## Next Planned Phase
 
-**Phase 2 — scope TBD by user after Phase 1 review.** Likely drawn from the backlog above. Do not start it without user direction.
+**Phase 2B — Motion Engine implementations + style integration.** Scope sketched in `docs/motion-engine.md` ("Phase 2B integration plan"). Do not start without user approval.

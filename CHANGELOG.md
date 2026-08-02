@@ -4,6 +4,18 @@ All completed phases and major architectural changes, newest first. Add an entry
 
 ---
 
+## 2026-08-02 — Phase 2A: Motion Engine Foundation (NME) ✅
+
+Style-agnostic motion framework at `backend/remotion/motion/`. Purely additive — zero changes to existing compositions, pipeline, or API. Architecture doc: `docs/motion-engine.md`.
+
+- **Core**: central registry (camera/transition/effect/preset categories, frozen definitions, pluggable via one `register()` call), JSDoc type contracts (`types.js`), config resolution chain — global defaults → preset → definition param defaults → per-use spec — computed once per scene (`resolveMotion`), timing engine (linear/easeIn/easeOut/easeInOut, CSS-alias tolerant, `registerEasing()` for future custom curves), zero-allocation per-frame progress math (`motionProgress` with delay/speed/scene-span semantics).
+- **Declared vocabulary** (config + param schemas only, `status: 'planned'`, no implementations by design): camera zoom/pan/rotate/orbit/shake/focusPull; transitions fade/slide/whip/flash/paperReveal/morph; effects filmGrain/blur/glow/noise/particles/vignette; presets slowZoom/fastZoom/documentaryPan/cinematicDrift/newsPush/heroReveal.
+- **Render-safety**: unknown/unimplemented motion degrades to shared frozen identity states (static shot / cut / skipped overlay) with one-time warnings — planner output can never crash a render.
+- **Remotion adapter**: `hooks.js` (`useCameraMotion`, `useTransitionMotion`) is the only React-importing module; everything else is Node-testable.
+- **Test**: `scripts/test-motion.js` — 36 checks (registry contracts, easing math, resolution precedence, progress math, dispatch fallbacks, shared-identity perf guarantee), all passing.
+- **Validated**: live server endpoints healthy, full standalone re-render of `d2fe791fdb84` RENDER OK, frontend `tsc` + `vite build` clean, oxlint 1 pre-existing warning only.
+- Next (2B): implement `apply` functions (port `cinematic.jsx` `cameraTransform` → zoom/pan first), migrate Grain/vignette into effects, wire transitions into `Short.jsx`, planner emits preset names validated against the registry.
+
 ## 2026-08-02 — Phase 1: SaaS Foundation Refactor ✅
 
 Full backend architecture refactor, behavior preserved (prompts byte-identical).

@@ -17,7 +17,7 @@ Built around a timestamp-driven pipeline: AI-generated narration with word-level
 | **Stock Media Integration** | ✅ Available | AI images (Pollinations), stock photos (Openverse), and archival photos (Wikimedia Commons) with automatic license attribution |
 | **Project Management** | ✅ Available | Every video is a project with reviewable script, scenes, assets, and retry support |
 | **Style Presets** | 🚧 Planned | Expanding beyond the current Vox / Luxury / Cinematic styles into a full style system ("Style Bible") |
-| **Motion Graphics** | 🚧 Planned | Dedicated motion engine for richer camera work, transitions, and kinetic graphics |
+| **Motion Graphics** | 🔨 In development | Nerrico Motion Engine (NME): style-agnostic registry of camera moves, transitions, and effects — foundation complete, implementations in progress ([architecture](docs/motion-engine.md)) |
 | **Caption Engine** | 🚧 Planned | Advanced word-synced caption system with per-style typography |
 | **User-provided AI APIs** | 🚧 Planned | Bring your own keys — Gemini, OpenAI, premium ElevenLabs, Pexels/Pixabay — for higher quality and throughput |
 
@@ -56,6 +56,7 @@ Nerrico/
 ├── backend/    # Express API + video pipeline
 │   ├── src/        # layered source: config / utils / providers / content / core / api
 │   ├── remotion/   # video compositions and style renderers (vox, luxury, cinematic)
+│   │   └── motion/ # Nerrico Motion Engine (NME): camera, transitions, effects, presets
 │   ├── config/     # branding assets and configuration
 │   └── scripts/    # preview and diagnostic tools
 ├── assets/     # shared assets (voice samples, references)
@@ -76,6 +77,8 @@ Nerrico is developed in **explicit, sequential phases**. Each phase is scoped up
 **Current status:**
 
 > ✅ **Phase 1 — Foundation** complete: full SaaS-grade architecture refactor with a layered backend, typed frontend API layer, and centralized configuration.
+>
+> ✅ **Phase 2A — Motion Engine Foundation** complete: style-agnostic motion framework (registry, presets, timing engine, camera/transition/effect architecture). Motion implementations follow in Phase 2B.
 
 **Upcoming phases:**
 
@@ -142,6 +145,8 @@ Additional design docs live in [`docs/`](docs/), including the backend API contr
 
 - [x] Phase 1 — Foundation
 - [ ] Phase 2 — Motion Engine
+  - [x] Phase 2A — Motion Engine foundation (registry, types, presets, timing)
+  - [ ] Phase 2B — Motion implementations & style integration
 - [ ] Phase 3 — Style Bible
 - [ ] Phase 4 — Asset Engine
 - [ ] Phase 5 — Voice Engine
