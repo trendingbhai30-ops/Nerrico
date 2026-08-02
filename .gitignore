@@ -1,0 +1,50 @@
+# ── Dependencies ──────────────────────────────────────────────
+node_modules/
+
+# ── Secrets / API keys — NEVER commit these ───────────────────
+# (ElevenLabs + Gemini keys live in backend/.env)
+.env
+.env.*
+!.env.example
+
+# ── Backup archives ───────────────────────────────────────────
+*.tgz
+*.tar.gz
+*.zip
+
+# ── Generated project data (audio, images, rendered videos) ───
+backend/data/
+
+# ── Render outputs ────────────────────────────────────────────
+out/
+renders/
+
+# ── Build output ──────────────────────────────────────────────
+dist/
+dist-ssr/
+
+# ── Caches ────────────────────────────────────────────────────
+.cache/
+.remotion/
+.vite/
+*.local
+
+# ── Logs ──────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── Test / debug artifacts ────────────────────────────────────
+backend/test-slide-*.png
+backend/refframes/
+backend/voxref/
+
+# ── OS / editor ───────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json

@@ -1,0 +1,16 @@
+{
+  "short_name": "Nerrico",
+  "name": "Nerrico Shorts Generator",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512 192x192 96x96 32x32"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0E0E10",
+  "theme_color": "#0E0E10",
+  "display": "standalone",
+  "orientation": "portrait"
+}
