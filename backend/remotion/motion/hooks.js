@@ -99,6 +99,66 @@ export function MotionEffect({ spec }) {
 }
 
 const h = React.createElement;
+
+/**
+ * Wrapper that renders a full TransitionState — the ONE place every state
+ * field maps to CSS (Phase 2D-1). Styles/Short.jsx wrap a scene with this
+ * instead of hand-applying fields, so new state fields can never be silently
+ * dropped by a consumer.
+ *
+ * DOM shape is deliberately constant across frames: the overlay and SVG
+ * filter-def slots are nullable SIBLINGS after the scene wrapper, so their
+ * appearing/disappearing mid-transition never remounts the scene subtree.
+ * @param {{state: import('./types.js').TransitionState, children: React.ReactNode}} props
+ */
+export function TransitionShell({ state, children }) {
+  const def = state.filterDef || null;
+  return h(
+    AbsoluteFill,
+    null,
+    h(
+      AbsoluteFill,
+      {
+        style: {
+          opacity: state.opacity,
+          transform: state.transform || undefined,
+          filter: state.filter || undefined,
+          clipPath: state.clipPath || undefined,
+        },
+      },
+      children
+    ),
+    // Directional gaussian blur def (whip). Lives OUTSIDE the filtered element
+    // so `filter: url(#id)` resolves cleanly; wide region so a full-frame
+    // element blurred mid-whip isn't clipped at the filter boundary.
+    def
+      ? h(
+          'svg',
+          { width: 0, height: 0, style: { position: 'absolute' } },
+          h(
+            'defs',
+            null,
+            h(
+              'filter',
+              { id: def.id, x: '-50%', y: '-50%', width: '200%', height: '200%' },
+              h('feGaussianBlur', { stdDeviation: `${def.x} ${def.y}` })
+            )
+          )
+        )
+      : null,
+    // Full-frame color wash above the scene (flash).
+    state.overlay
+      ? h(AbsoluteFill, {
+          style: {
+            backgroundColor: state.overlay.color,
+            opacity: state.overlay.opacity,
+            pointerEvents: 'none',
+          },
+        })
+      : null
+  );
+}
+
 function renderFilmGrain(state) {
   // One SVG turbulence-filtered rect — the same lightweight technique as
   // cinematic.jsx's production Grain. seed comes from the engine (deterministic).

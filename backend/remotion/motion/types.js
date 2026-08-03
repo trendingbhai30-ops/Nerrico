@@ -91,10 +91,22 @@
 
 /**
  * Transition frame state, applied to the incoming/outgoing scene wrapper.
+ * Phase 2D-1 extended the shape; every field beyond opacity/transform/filter
+ * is optional and absent/benign on older states (fade emits only the first
+ * three), so existing consumers never break. `TransitionShell` (hooks.js) is
+ * the one place that maps ALL of these to rendered CSS.
  * @typedef {Object} TransitionState
  * @property {number} opacity
  * @property {string} transform   CSS transform fragment ('' = none).
- * @property {string} filter      CSS filter fragment ('' = none).
+ * @property {string} filter      CSS filter fragment ('' = none). May reference
+ *                                an SVG filter by url(#id) — then `filterDef`
+ *                                MUST describe it so the def gets rendered.
+ * @property {string} [clipPath]  CSS clip-path ('' = none; paperReveal).
+ * @property {{color: string, opacity: number}|null} [overlay]
+ *                                Full-frame color wash above the scene (flash).
+ * @property {{id: string, x: number, y: number}|null} [filterDef]
+ *                                Directional gaussian blur def the shell must
+ *                                render for `filter`'s url() to resolve (whip).
  */
 
 /**

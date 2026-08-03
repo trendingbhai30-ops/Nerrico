@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { AbsoluteFill, Audio, Sequence, useVideoConfig } from 'remotion';
 import { getStyle } from './styles/index.js';
-import { MotionEffect, useTransitionMotion } from './motion/hooks.js';
+import { MotionEffect, TransitionShell, useTransitionMotion } from './motion/hooks.js';
+import { motionRegistry } from './motion/registry.js';
 
 // Seconds of branded CTA end-scene appended when branding is present.
 // Root.jsx's calculateMetadata must add the same amount.
@@ -17,29 +18,28 @@ const SCENE_TRANSITION_SEC = 0.4;
 // Scenes without motion fields resolve to the shared identity state — no
 // visual change for pre-2.5 projects.
 function SceneMotion({ scene, children }) {
-  const transitionSpec = useMemo(
-    () =>
-      scene.transition
-        ? { category: 'transition', kind: scene.transition, durationInSeconds: SCENE_TRANSITION_SEC }
-        : null,
-    [scene.transition]
-  );
+  // scene.transition is a kind name ('slide') or, since Phase 2D-1, possibly a
+  // transition preset ('heroReveal'). A preset carries its own taste (duration,
+  // easing, params) — pass the shorthand string through untouched; a bare kind
+  // gets the standard entrance duration.
+  const transitionSpec = useMemo(() => {
+    if (!scene.transition) return null;
+    if (motionRegistry.has('preset', scene.transition)) return scene.transition;
+    return { category: 'transition', kind: scene.transition, durationInSeconds: SCENE_TRANSITION_SEC };
+  }, [scene.transition]);
   const effectSpec = useMemo(
     () => (scene.effect ? { category: 'effect', kind: scene.effect } : null),
     [scene.effect]
   );
   const enter = useTransitionMotion(transitionSpec, 'in');
+  // TransitionShell (motion/hooks.js) renders the FULL TransitionState —
+  // opacity/transform/filter plus the Phase 2D-1 fields (clipPath, flash
+  // overlay, whip's directional-blur SVG def).
   return (
-    <AbsoluteFill
-      style={{
-        opacity: enter.opacity,
-        transform: enter.transform || undefined,
-        filter: enter.filter || undefined,
-      }}
-    >
+    <TransitionShell state={enter}>
       {children}
       {effectSpec ? <MotionEffect spec={effectSpec} /> : null}
-    </AbsoluteFill>
+    </TransitionShell>
   );
 }
 

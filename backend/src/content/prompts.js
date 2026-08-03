@@ -135,6 +135,19 @@ function implementedLegend(category) {
     .join(', ');
 }
 
+// The "transition" field also accepts transition-category presets (heroReveal)
+// once their kind is implemented — validated by transitionOrNull in
+// src/core/scenes.js and resolved as preset shorthand in Short.jsx.
+function transitionLegend() {
+  const presets = motionRegistry
+    .list('preset')
+    .map((name) => ({ name, resolved: resolveMotion(name), description: motionRegistry.get('preset', name).description }))
+    .filter(({ resolved }) => resolved.category === 'transition' && resolved.def?.status === 'implemented')
+    .map(({ name, description }) => `"${name}" (${description})`)
+    .join(', ');
+  return [implementedLegend('transition'), presets].filter(Boolean).join(', ');
+}
+
 // Motion Engine bullets for shotsPrompt. Every value the planner emits from
 // these is validated against the Motion Registry in src/core/scenes.js —
 // unknown names are stripped there, and the engine degrades gracefully anyway.
@@ -146,7 +159,7 @@ function motionFieldLines() {
       `- "motion": the camera move as a named preset — PREFERRED over "camera". One of: ${presets}. Match it to the shot's mood and vary it across shots; still fill in "camera" as the fallback.`
     );
   }
-  const transitions = implementedLegend('transition');
+  const transitions = transitionLegend();
   if (transitions) {
     lines.push(
       `- "transition": optional entrance for the shot. One of: ${transitions}. Use on roughly 1 in 3 shots where a softer entrance helps; omit the field for a straight cut.`

@@ -1,11 +1,11 @@
 # PROJECT_STATUS.md
 
 > Snapshot of where Nerrico stands right now. Update this file at the end of every phase.
-> Last updated: **2026-08-02** (after Phase 2C — Advanced Camera Motion Library)
+> Last updated: **2026-08-03** (after Phase 2D-1 — Motion Transitions)
 
 ## Current Phase
 
-**Phase 2C (Advanced Camera Motion Library) is COMPLETE and validated.** All 7 camera kinds are implemented and in the planner vocabulary (10 camera presets). Waiting on user approval before starting Phase 2D (remaining transitions slide/whip/flash/paperReveal/morph, effects blur/glow/noise/particles/vignette).
+**Phase 2D-1 (Motion Transitions) is COMPLETE and validated (NOT yet committed — awaiting user approval).** All 6 transitions are implemented and in the planner vocabulary (including the heroReveal preset). Waiting on user approval before starting Phase 2D-2 (remaining effects blur/glow/noise/particles/vignette).
 
 ## Completed Work
 
@@ -59,9 +59,17 @@
 - **Validated**: motion smoke test 90/90 (was 56), pipeline test 13/13, baseline pixel-compare max delta 8/255 (grain/AA noise only), fresh server + endpoints healthy, full re-render of `d2fe791fdb84` RENDER OK, frontend `tsc` + `vite build` clean, oxlint no new warnings.
 - **FFmpeg finding**: frame extraction to `.bmp` fails ("encoder not found") because Remotion's bundled ffmpeg is a minimal build (`--disable-encoders` + allowlist: png/mjpeg/x264/…) with no bmp encoder, and no system ffmpeg exists. Local tooling constraint only — renders (libx264) and stills (png) are unaffected. Always extract frames as `.png`; for pixel comparisons use `pngjs` (already in backend node_modules).
 
+### Phase 2D-1 — Motion Transitions (2026-08-03)
+
+- **All 6 transitions implemented** (`status: 'implemented'`): Phase 2B's fade joined by **slide** (axis travel, fade completes at ~70% of the move so the settle reads as "arriving"; `withFade`/`distancePct` params), **whip** (full-frame lateral snap with horizontal-only SVG gaussian blur peaking mid-move via the 4p(1−p) parabola, dropped below 0.5px), **flash** (color wash over the fully-visible scene — rise to 30%, ^1.5 decay; overlay null at both endpoints), **paperReveal** (torn-edge clip-path sweep, deterministic sin-hash jags, completes to the SHARED identity), **morph** (simple entrance-only: scale 1.15 → 1 + blur 8px → 0 with snap-to-0 + front-loaded fade). All entrance-designed (scenes never overlap); the 'out' phase retraces the entrance.
+- **`TransitionState` extended** (`types.js`, all new fields optional/benign on old states): `clipPath`, `overlay {color, opacity}`, `filterDef {id, x, y}`. New **`TransitionShell`** component in `motion/hooks.js` is the ONE place a full TransitionState maps to CSS (constant DOM shape across frames — no scene remounts); `Short.jsx`'s `SceneMotion` now wraps scenes with it instead of hand-applying fields.
+- **heroReveal preset reachable**: the planner's `"transition"` field now accepts transition kinds OR transition-category presets — `transitionLegend()` in prompts.js offers them, `transitionOrNull()` in scenes.js validates them (camera/effect presets still rejected), `SceneMotion` resolves preset names as preset shorthand (preset keeps its own duration/easing).
+- **TransitionDemo** (`remotion/TransitionDemo.jsx` + `scripts/render-transition-demo.js`): 6 labeled segments (slide, whip, flash, paperReveal, morph, heroReveal-as-preset) over the MotionDemo grid; mp4 + 18 stills to `data/transition-demo/`. Rendered and frame-verified (directional whip blur, torn paper edge, flash wash all visually confirmed).
+- **Validated**: motion smoke test 124/124 (was 90), pipeline test 13/13, baseline pixel-compare max delta 8/255 (grain/AA noise only — legacy path untouched), fresh server + all endpoints healthy, full re-render of `d2fe791fdb84` RENDER OK, frontend `tsc` + `vite build` clean, oxlint 1 pre-existing warning only.
+
 ## Pending Phases
 
-- **Phase 2D** — remaining motion implementations: transitions slide/whip/flash/paperReveal/morph, effects blur/glow/noise/particles/vignette. Style integration and planner emission are DONE (Phase 2.5) — prompt vocabulary and the heroReveal preset surface automatically as their kinds get implemented.
+- **Phase 2D-2** — remaining effect implementations: blur/glow/noise/particles/vignette. Each is one `apply` function + a renderer branch in `MotionEffect` (hooks.js); planner vocabulary picks each up automatically.
 - Roadmap after Phase 2 (user-defined, see README): 3 Style Bible, 4 Asset Engine, 5 Voice Engine, 6 Caption Engine, 7 UI, 8 Authentication & Firebase, 9 YouTube Upload, 10 Public Launch.
 - Backlog candidates (user-acknowledged, not scheduled):
   - Background music + SFX (deprioritized twice by user; skip unless asked).
@@ -84,7 +92,7 @@
   - `core/` — `store.js`, `pipeline.js`, `scenes.js`, `slides.js`, `render.js`
   - `api/` — `app.js`, `routes/{meta,voices,projects}.js`, `middleware.js`
 - **Rendering**: `backend/remotion/` — `Short.jsx`, `Slide.jsx`, `scenes.jsx`, `styles/{vox,luxury,cinematic}.jsx`, `theme.js`. Untouched by Phase 1.
-- **Motion Engine (NME)**: `backend/remotion/motion/` — registry, types, config, timing, camera/transitions/effects/presets, Remotion hooks. Architecture in `docs/motion-engine.md`. Implemented: ALL 7 camera kinds (zoom, pan, rotate, orbit, push, shake, focusPull), transition fade, effect filmGrain; remaining transitions/effects still `planned` (Phase 2D). **Integrated (Phase 2.5)**: cinematic camera/grain/fade and vox Ken Burns run through the engine; `Short.jsx` applies planner-emitted transitions/effects to every style; the shot planner emits registry-validated `motion`/`transition`/`effect` fields. Integration test: `scripts/test-motion-pipeline.js` (+ visual baseline in `data/motion-pipeline/`). Camera demo: `scripts/render-camera-demo.js` → `data/camera-demo/`.
+- **Motion Engine (NME)**: `backend/remotion/motion/` — registry, types, config, timing, camera/transitions/effects/presets, Remotion hooks. Architecture in `docs/motion-engine.md`. Implemented: ALL 7 camera kinds (zoom, pan, rotate, orbit, push, shake, focusPull), ALL 6 transitions (fade, slide, whip, flash, paperReveal, morph — rendered via `TransitionShell` in hooks.js), effect filmGrain; remaining effects still `planned` (Phase 2D-2). **Integrated (Phase 2.5)**: cinematic camera/grain/fade and vox Ken Burns run through the engine; `Short.jsx` applies planner-emitted transitions/effects to every style; the shot planner emits registry-validated `motion`/`transition`/`effect` fields (the transition field also takes transition presets like heroReveal since 2D-1). Integration test: `scripts/test-motion-pipeline.js` (+ visual baseline in `data/motion-pipeline/`). Demos: `scripts/render-camera-demo.js` → `data/camera-demo/`, `scripts/render-transition-demo.js` → `data/transition-demo/`.
 - **Project data**: `backend/data/projects/<id>/project.json` + assets. Server reads from disk on `/retry`, so editing project.json then retrying works.
 - **Content matrix**: modes = normal | realestate; languages = english | hinglish | hindi (hindi writes Devanagari and defaults to library voice "Viraj" — blocked on free tier, override via `HINDI_VOICE_ID`); styles = vox | luxury | cinematic (cinematic is reels-only; carousels reuse luxury slides); formats = reel | carousel.
 - **Git repo initialized** (local only, one commit per phase since Phase 1). No cloud services (zero budget).
@@ -116,4 +124,4 @@
 
 ## Next Planned Phase
 
-**Phase 2D — remaining motion implementations** (transitions slide/whip/flash/paperReveal/morph, effects blur/glow/noise/particles/vignette). Integration is done — each new implementation is one `apply` function and automatically becomes available to the planner prompt and all styles (heroReveal surfaces once `slide` lands). Note: the long-running backend server caches its Remotion bundle per process — restart it after motion/ changes (freshly restarted at the end of Phase 2C). Do not start Phase 2D without user approval.
+**Phase 2D-2 — remaining effect implementations** (blur/glow/noise/particles/vignette). Each is one `apply` function on its existing definition plus a renderer branch in `MotionEffect` (hooks.js); the planner prompt, validation, and style wiring pick each one up automatically. Note: the long-running backend server caches its Remotion bundle per process — restart it after motion/ changes (freshly restarted at the end of Phase 2D-1). Phase 2D-1 is NOT yet committed to git — user approval pending. Do not start Phase 2D-2 without user approval.

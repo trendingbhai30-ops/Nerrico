@@ -4,6 +4,23 @@ All completed phases and major architectural changes, newest first. Add an entry
 
 ---
 
+## 2026-08-03 — Phase 2D-1: Motion Transitions ✅
+
+Every transition in the NME vocabulary is now implemented — the transition library is complete (6 kinds, all `status: 'implemented'`). Additive: `apply` functions on existing definitions, one new render component, zero architecture changes. (Work spanned two sessions — an API-limit interruption left slide/whip/flash/paperReveal + the `TransitionState` extension done; this session recovered state and finished the rest.)
+
+- **Transition `slide`**: axis travel (`left/right/up/down`, travel-direction semantics) of `distancePct` with an opacity ramp that completes at ~70% of the move — the settle lands at full opacity, so it reads as "arriving", not "still appearing". `withFade: false` for pure travel.
+- **Transition `whip`**: full-frame lateral snap with a HORIZONTAL-only SVG gaussian blur (real directional motion blur, not a defocus) peaking mid-move via the 4p(1−p) parabola; sub-0.5px blur drops the filter entirely, and both endpoints are filter-free.
+- **Transition `flash`**: white/color wash OVER the fully-visible scene (a flash punctuates the cut, never hides content) — fast rise across the first 30%, ^1.5 decay tail; the overlay object is `null` at both endpoints so before/after frames pay nothing.
+- **Transition `paperReveal`**: torn-paper clip-path sweep — fixed sin-hash per-vertex jags (NO RNG, bit-identical every render), edge sweeps from fully-off to fully-off, and completion returns the SHARED identity so the clip is dropped once revealed.
+- **Transition `morph`** (simple entrance-only per phase scope): scene arrives oversized and soft (scale 1.15 → 1, blur 8px → 0 with snap-to-0) with a front-loaded fade — reads as the previous shot becoming this one.
+- **`TransitionState` extended** (`types.js`): optional `clipPath`, `overlay {color, opacity}`, `filterDef {id, x, y}` — absent/benign on older states, so existing consumers never break.
+- **New `TransitionShell`** (`motion/hooks.js`): the ONE component mapping a full TransitionState to CSS (wrapper + whip's SVG blur def + flash's wash overlay), with a frame-constant DOM shape so slots appearing mid-transition never remount the scene subtree. `Short.jsx`'s `SceneMotion` now uses it instead of hand-applying fields (which silently dropped the new state).
+- **heroReveal preset now reachable**: the `"transition"` field accepts kinds or transition-category presets — offered by `transitionLegend()` (prompts.js), validated by `transitionOrNull()` (scenes.js; camera/effect presets still rejected), resolved as preset shorthand in `SceneMotion` (a preset keeps its own duration/easing; bare kinds get the 0.4 s default). Prompt vocabulary grew automatically per the Phase 2.5 design: slide, whip, flash, paperReveal, morph + heroReveal all verified IN PROMPT.
+- **TransitionDemo**: `remotion/TransitionDemo.jsx` (6 labeled segments reusing MotionDemo's Backdrop/Label; zero hand-rolled animation math) + `scripts/render-transition-demo.js` → `data/transition-demo/` mp4 + 18 stills (early/mid/settled per segment). Frame-verified: whip's directional blur, paper's torn edge, flash's wash, morph's soft settle all visually confirmed.
+- **Validated**: motion smoke test **124/124** (was 90; adds per-transition math + "every registered transition is implemented"; the planned-transition fallback contract now proven with a synthetic test-only kind), pipeline test 13/13, baseline pixel-compare max per-channel delta 8/255 (grain/AA noise — legacy path untouched), fresh server + all endpoints healthy, full re-render of `d2fe791fdb84` RENDER OK, frontend `tsc` + `vite build` clean, oxlint 1 pre-existing warning only. NOT committed — awaiting user approval.
+
+---
+
 ## 2026-08-02 — Phase 2C: Advanced Camera Motion Library ✅
 
 Every camera kind in the NME vocabulary is now implemented — the camera library is complete (7 kinds, all `status: 'implemented'`). Purely additive: one new kind + `apply` functions on existing definitions; zero architecture changes.

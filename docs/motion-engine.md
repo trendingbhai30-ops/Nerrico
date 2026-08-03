@@ -1,6 +1,6 @@
 # Nerrico Motion Engine (NME)
 
-> Architecture reference. Built in Phase 2A (2026-08-02). Phase 2B implemented the first four motions — camera `zoom` + `pan`, transition `fade`, effect `filmGrain` (proven by the `MotionDemo` composition). Phase 2.5 integrated the engine into the production pipeline: the styles, `Short.jsx`, the scene planner, and validation all run through it. Phase 2C completed the camera library — all 7 camera kinds implemented (proven by the `CameraDemo` composition). Remaining transitions/effects land in Phase 2D.
+> Architecture reference. Built in Phase 2A (2026-08-02). Phase 2B implemented the first four motions — camera `zoom` + `pan`, transition `fade`, effect `filmGrain` (proven by the `MotionDemo` composition). Phase 2.5 integrated the engine into the production pipeline: the styles, `Short.jsx`, the scene planner, and validation all run through it. Phase 2C completed the camera library — all 7 camera kinds implemented (proven by the `CameraDemo` composition). Phase 2D-1 completed the transition library — all 6 transitions implemented (proven by the `TransitionDemo` composition). Remaining effects land in Phase 2D-2.
 
 ## What it is
 
@@ -20,7 +20,7 @@ backend/remotion/motion/
 ├── utils.js            # clamp/lerp/warnOnce/deepFreeze
 ├── hooks.js            # the ONLY Remotion-importing module (useCameraMotion, …)
 ├── camera/index.js     # zoom, pan, rotate, orbit, push, shake, focusPull (ALL implemented)
-├── transitions/index.js# fade (implemented); slide, whip, flash, paperReveal, morph (planned)
+├── transitions/index.js# fade, slide, whip, flash, paperReveal, morph (ALL implemented)
 ├── effects/index.js    # filmGrain (implemented); blur, glow, noise, particles, vignette (planned)
 └── presets/index.js    # slowZoom, fastZoom, documentaryPan, cinematicDrift, newsPush, slowRoll,
                         # pushIn, pullBack, impactShake, rackFocus (camera) + heroReveal (transition)
@@ -83,11 +83,13 @@ motionRegistry.has('preset', shot.motion); // validate planner output
 
 ## Testing
 
-`node scripts/test-motion.js` (from `backend/`) — 90 checks over registry contracts, easing math, resolution precedence, progress math (delay/speed/scene-span), dispatch fallbacks, the shared-identity perf guarantee, and the implemented motions' math (zoom/pan/fade/filmGrain plus the Phase 2C camera library: rotate ramps and mirroring, orbit anchoring/quarter-turn/return-home, push hyperbolic acceleration and clamping, shake determinism/seeding/decay-to-rest, focusPull blur ramps and snap-to-0, and "every camera preset offered to the planner resolves to an implemented kind"). The script prints its own count — keep docs in sync with that output. Run it after any motion/ change.
+`node scripts/test-motion.js` (from `backend/`) — 124 checks over registry contracts, easing math, resolution precedence, progress math (delay/speed/scene-span), dispatch fallbacks, the shared-identity perf guarantee, and the implemented motions' math (zoom/pan/fade/filmGrain, the Phase 2C camera library: rotate ramps and mirroring, orbit anchoring/quarter-turn/return-home, push hyperbolic acceleration and clamping, shake determinism/seeding/decay-to-rest, focusPull blur ramps and snap-to-0, and the Phase 2D-1 transition library: slide travel/fade-completion/out-retrace, whip off-frame start/mid-move directional blur/clean landing, flash rise-peak-decay and endpoint-null overlays, paperReveal deterministic tear and completion-to-shared-identity, morph settle/blur-snap/identity — plus "every camera preset offered to the planner resolves to an implemented kind" and "every registered transition is implemented"). The script prints its own count — keep docs in sync with that output. Run it after any motion/ change.
 
 `node scripts/render-motion-demo.js` (from `backend/`, needs no server) — renders the `MotionDemo` composition (4 labeled segments: slow zoom, pan, fade, film grain) plus verification stills to `data/motion-demo/`. This is the visual proof that implemented motions work end-to-end in a real render.
 
 `node scripts/render-camera-demo.js` (from `backend/`, needs no server) — renders the `CameraDemo` composition (6 labeled segments: rotate, orbit, push in, pull out, focus pull, shake) plus 2 verification stills per segment to `data/camera-demo/`. Visual proof of the Phase 2C camera library.
+
+`node scripts/render-transition-demo.js` (from `backend/`, needs no server) — renders the `TransitionDemo` composition (6 labeled segments: slide, whip, flash, paperReveal, morph, heroReveal-as-preset) plus 3 verification stills per segment (early / mid-transition / settled) to `data/transition-demo/`. Visual proof of the Phase 2D-1 transition library, including the `TransitionShell` render path.
 
 **Frame-extraction gotcha**: Remotion's bundled ffmpeg (the only ffmpeg on this machine) has no `bmp` encoder and no `rawvideo` muxer — extract frames as `.png` only, and do pixel comparisons in Node with `pngjs` (already in backend node_modules).
 
@@ -109,6 +111,16 @@ Migration proven behaviour-preserving by pixel-comparing `data/motion-pipeline/c
 
 All 7 camera kinds are implemented: zoom, pan (Phase 2B), rotate, orbit, **push** (a new kind added in 2C — physical dolly using CSS-perspective math `scale = P/(P−z)`, hyperbolically accelerating unlike zoom's linear ramp), shake (seeded sum-of-sines, deterministic, decays to exact rest), focusPull (blur ramp + lens-breathing zoom, rendered via the `filter` string `useCameraMotion` now returns — apply it alongside `transform`/`transformOrigin` if a style should support rack focus). 10 camera presets are in the planner vocabulary: slowZoom, fastZoom, documentaryPan, newsPush, cinematicDrift, slowRoll, pushIn, pullBack, impactShake, rackFocus.
 
-## Phase 2D plan (not done yet)
+## Transition library (completed in Phase 2D-1)
 
-Implement the remaining kinds: transitions slide/whip/flash/paperReveal/morph, effects blur/glow/noise/particles/vignette. Each is one `apply` function on its existing definition — the planner prompt, validation, and style wiring above pick it up automatically (e.g. the `heroReveal` preset surfaces in the prompt once `slide` is implemented).
+All 6 transitions are implemented: fade (Phase 2B), **slide** (axis travel with a fade that completes at ~70% of the move so the settle reads as "arriving"), **whip** (full-frame lateral snap with a horizontal-only SVG gaussian blur that peaks mid-move via the 4p(1−p) parabola — real directional motion blur, dropped entirely below 0.5px), **flash** (white/color wash OVER the fully-visible scene — fast rise to 30%, ^1.5 decay tail; overlay is `null` at both endpoints), **paperReveal** (torn-edge clip-path sweep; fixed sin-hash jag offsets so the tear is bit-identical every render; completes to the SHARED identity so a settled scene drops the clip), **morph** (simple entrance-only: scene arrives oversized and soft — scale 1.15 → 1, blur 8px → 0 with snap-to-0 — and resolves sharp).
+
+Scenes in `Short.jsx` never overlap, so every kind is designed as an **entrance**; when a hook drives the `'out'` phase, spatial kinds reverse their own progress and retrace their entrance.
+
+**`TransitionState` grew in 2D-1** (all new fields optional/benign on old states): `clipPath` (paperReveal), `overlay` `{color, opacity}` (flash), `filterDef` `{id, x, y}` (whip's directional blur — the def the shell must render so `filter: url(#id)` resolves). **`TransitionShell`** (`motion/hooks.js`) is the ONE component that maps a full `TransitionState` to rendered CSS — `Short.jsx`'s `SceneMotion` wraps every scene with it, with a DOM shape that stays constant across frames so slots appearing/disappearing never remount the scene subtree. Styles should wrap with `TransitionShell` rather than hand-applying state fields.
+
+**Transition presets in the planner** — the `"transition"` field now accepts a transition kind (`"slide"`) or a transition-category preset (`"heroReveal"`): offered by `transitionLegend()` (`src/content/prompts.js`), validated by `transitionOrNull()` (`src/core/scenes.js`, camera/effect presets still rejected), and resolved as preset shorthand in `SceneMotion` (a preset carries its own duration/easing; bare kinds get the 0.4 s default).
+
+## Phase 2D-2 plan (not done yet)
+
+Implement the remaining effects: blur/glow/noise/particles/vignette. Each is one `apply` function on its existing definition plus a renderer branch in `MotionEffect` (hooks.js) — the planner prompt, validation, and style wiring above pick each one up automatically.

@@ -1,7 +1,7 @@
 import { askClaudeJson } from '../providers/claude.js';
 import { scenesPrompt, shotsPrompt } from '../content/prompts.js';
 import { getStyleDef } from '../content/styles.js';
-import { motionRegistry } from '../../remotion/motion/index.js';
+import { motionRegistry, resolveMotion } from '../../remotion/motion/index.js';
 
 /**
  * Ask Claude to plan scenes, then validate/repair the result.
@@ -28,6 +28,15 @@ const CAMERAS = ['zoomIn', 'zoomOut', 'panLeft', 'panRight'];
 const registeredOrNull = (category, name) =>
   typeof name === 'string' && motionRegistry.has(category, name) ? name : null;
 
+// The "transition" field accepts a transition KIND ('slide') or a
+// transition-category PRESET ('heroReveal') — Phase 2D-1, when heroReveal
+// entered the prompt vocabulary. Camera/effect presets are still rejected.
+const transitionOrNull = (name) => {
+  if (registeredOrNull('transition', name)) return name;
+  if (registeredOrNull('preset', name) && resolveMotion(name).category === 'transition') return name;
+  return null;
+};
+
 export function validateShots(data, wordCount) {
   const shots = data?.shots || data?.scenes;
   if (!Array.isArray(shots) || shots.length === 0) {
@@ -44,7 +53,7 @@ export function validateShots(data, wordCount) {
     emphasis: Array.isArray(s.emphasis) ? s.emphasis.map(String).slice(0, 2) : [],
     camera: CAMERAS.includes(s.camera) ? s.camera : CAMERAS[i % CAMERAS.length],
     motion: registeredOrNull('preset', s.motion),
-    transition: registeredOrNull('transition', s.transition),
+    transition: transitionOrNull(s.transition),
     effect: registeredOrNull('effect', s.effect),
   }));
   for (const s of scenes) {

@@ -98,9 +98,10 @@ const fast = resolveMotion({ category: 'camera', kind: 'zoom', easing: 'linear',
 check('speed halves effective duration', motionProgress(fast, 30, 30) === 1);
 
 // --- dispatch fallbacks -----------------------------------------------------------
-// (All camera kinds are implemented as of Phase 2C — a synthetic planned kind,
-// registered only inside this test process, proves the fallback contract.
-// Transition/effect fallbacks still use real planned kinds: slide, noise.)
+// (All camera kinds are implemented as of Phase 2C and all transitions as of
+// Phase 2D-1 — synthetic planned kinds, registered only inside this test
+// process, prove the fallback contract. Effect fallbacks still use a real
+// planned kind: noise.)
 console.log('dispatch:');
 motionRegistry.register('camera', {
   name: 'testPlanned',
@@ -112,10 +113,18 @@ motionRegistry.register('camera', {
 const plannedCam = resolveMotion({ category: 'camera', kind: 'testPlanned' });
 check('planned camera → shared identity', getCameraTransform(plannedCam, 0.5) === CAMERA_IDENTITY);
 check('identity css renders', cameraTransformToCss(CAMERA_IDENTITY) === 'scale(1) translate(0px, 0px)');
-const hero = resolveMotion('heroReveal'); // slide — still planned
-check('planned transition → shared identity', getTransitionState(hero, 0.5) === TRANSITION_IDENTITY);
+motionRegistry.register('transition', {
+  name: 'testPlannedTransition',
+  category: 'transition',
+  status: 'planned',
+  description: 'test-only planned kind',
+  params: {},
+});
+const plannedTrans = resolveMotion({ category: 'transition', kind: 'testPlannedTransition' });
+check('planned transition → shared identity', getTransitionState(plannedTrans, 0.5) === TRANSITION_IDENTITY);
 const noise = resolveMotion({ category: 'effect', kind: 'noise' }); // still planned
 check('planned effect → null (skip)', getEffectState(noise, 0.5) === null);
+const hero = resolveMotion('heroReveal'); // transition (slide)
 check('camera dispatch of non-camera motion → identity', getCameraTransform(hero, 0.5) === CAMERA_IDENTITY);
 
 // --- implemented motions (Phase 2B: zoom, pan, fade, filmGrain) -------------------
@@ -223,6 +232,67 @@ check('focus pull out defocuses 0 → 7', getCameraTransform(rackOut, 0).blur ==
 check('lens breathing zooms across the pull', close(getCameraTransform(rack, 1).scale, 1.02));
 check('focusPull intensity scales the blur', close(getCameraTransform(resolveMotion({ category: 'camera', kind: 'focusPull', easing: 'linear', intensity: 0.5 }), 0).blur, 3.5));
 
+// --- Phase 2D-1 transition library (slide, whip, flash, paperReveal, morph) ------
+console.log('transition library (Phase 2D-1):');
+const asOut = (m) => ({ ...m, direction: 'out' }); // how hooks.js drives the 'out' phase
+
+check('slide is implemented', motionRegistry.get('transition', 'slide').status === 'implemented');
+const slideDefault = resolveMotion({ category: 'transition', kind: 'slide', easing: 'linear' });
+const sd0 = getTransitionState(slideDefault, 0);
+check('slide non-spatial direction falls back to up (enters from below)', sd0.transform === 'translate(0.000%, 100.000%)');
+check('slide starts invisible with fade, settles fully visible', close(sd0.opacity, 0) && getTransitionState(slideDefault, 1).transform === '' && close(getTransitionState(slideDefault, 1).opacity, 1));
+const slideLeft = resolveMotion({ category: 'transition', kind: 'slide', direction: 'left', easing: 'linear' });
+check('slide left travels on the x axis', getTransitionState(slideLeft, 0).transform === 'translate(100.000%, 0.000%)');
+check('slide fade completes at ~70% of the travel (arrives, not appears)', close(getTransitionState(slideDefault, 0.75).opacity, 1) && getTransitionState(slideDefault, 0.75).transform !== '');
+const slideNoFade = resolveMotion({ category: 'transition', kind: 'slide', easing: 'linear', params: { withFade: false } });
+check('slide withFade:false keeps full opacity', close(getTransitionState(slideNoFade, 0).opacity, 1));
+check('slide out retraces its entrance', getTransitionState(asOut(slideDefault), 0).transform === '' && getTransitionState(asOut(slideDefault), 1).transform === 'translate(0.000%, 100.000%)');
+check('slide intensity scales the travel', getTransitionState(resolveMotion({ category: 'transition', kind: 'slide', easing: 'linear', intensity: 0.5 }), 0).transform === 'translate(0.000%, 50.000%)');
+
+check('whip is implemented', motionRegistry.get('transition', 'whip').status === 'implemented');
+const whip = resolveMotion({ category: 'transition', kind: 'whip', easing: 'linear' });
+const w0 = getTransitionState(whip, 0);
+const wMid = getTransitionState(whip, 0.5);
+const w1 = getTransitionState(whip, 1);
+check('whip starts a full frame off, no blur at rest', w0.transform === 'translate(100.000%, 0%)' && w0.filter === '' && w0.filterDef === null);
+check('whip blur peaks mid-move via the parabola', wMid.filter === 'url(#nme-whip-blur)' && !!wMid.filterDef && close(wMid.filterDef.x, 26) && wMid.filterDef.y === 0);
+check('whip lands clean (no transform, no filter)', w1.transform === '' && w1.filter === '' && w1.filterDef === null);
+check('whip stays fully opaque throughout', close(w0.opacity, 1) && close(wMid.opacity, 1));
+const whipRight = resolveMotion({ category: 'transition', kind: 'whip', direction: 'right', easing: 'linear' });
+check('whip right enters from the left side', getTransitionState(whipRight, 0).transform === 'translate(-100.000%, 0%)');
+
+check('flash is implemented', motionRegistry.get('transition', 'flash').status === 'implemented');
+const flash = resolveMotion({ category: 'transition', kind: 'flash', easing: 'linear' });
+check('flash never hides the scene', close(getTransitionState(flash, 0).opacity, 1) && close(getTransitionState(flash, 0.3).opacity, 1));
+check('flash overlay is null at both endpoints', getTransitionState(flash, 0).overlay === null && getTransitionState(flash, 1).overlay === null);
+const fPeak = getTransitionState(flash, 0.3);
+check('flash peaks at 30% with the configured color/strength', !!fPeak.overlay && fPeak.overlay.color === '#FFFFFF' && close(fPeak.overlay.opacity, 0.9));
+check('flash decays past the peak (pop then linger)', getTransitionState(flash, 0.6).overlay.opacity < fPeak.overlay.opacity && getTransitionState(flash, 0.6).overlay.opacity > 0);
+check('flash intensity scales the wash', close(getTransitionState(resolveMotion({ category: 'transition', kind: 'flash', easing: 'linear', intensity: 0.5 }), 0.3).overlay.opacity, 0.45));
+
+check('paperReveal is implemented', motionRegistry.get('transition', 'paperReveal').status === 'implemented');
+const paper = resolveMotion({ category: 'transition', kind: 'paperReveal', easing: 'linear' });
+const p0 = getTransitionState(paper, 0);
+const pMid = getTransitionState(paper, 0.5);
+check('paperReveal clips with a torn polygon mid-sweep', pMid.clipPath.startsWith('polygon(') && pMid.clipPath.includes('%'));
+check('paperReveal edge starts fully off-frame', p0.clipPath.startsWith('polygon(') && close(p0.opacity, 1));
+check('paperReveal completes to the SHARED identity (clip dropped)', getTransitionState(paper, 1) === TRANSITION_IDENTITY);
+check('paperReveal tear is deterministic', getTransitionState(paper, 0.5).clipPath === pMid.clipPath);
+const paperUp = resolveMotion({ category: 'transition', kind: 'paperReveal', direction: 'up', easing: 'linear' });
+check('paperReveal direction changes the sweep', getTransitionState(paperUp, 0.5).clipPath !== pMid.clipPath);
+
+check('morph is implemented', motionRegistry.get('transition', 'morph').status === 'implemented');
+const morph = resolveMotion({ category: 'transition', kind: 'morph', easing: 'linear' });
+const m0 = getTransitionState(morph, 0);
+check('morph arrives oversized and soft', m0.transform === 'scale(1.1500)' && m0.filter === 'blur(8.00px)' && close(m0.opacity, 0));
+const mMid = getTransitionState(morph, 0.5);
+check('morph settles scale/blur while fade is already done', mMid.transform === 'scale(1.0750)' && mMid.filter === 'blur(4.00px)' && close(mMid.opacity, 1));
+check('morph sub-0.5px blur snaps off before the scale settles', getTransitionState(morph, 0.95).filter === '' && getTransitionState(morph, 0.95).transform !== '');
+check('morph completes to the SHARED identity', getTransitionState(morph, 1) === TRANSITION_IDENTITY);
+check('morph intensity scales the settle', getTransitionState(resolveMotion({ category: 'transition', kind: 'morph', easing: 'linear', intensity: 2 }), 0).transform === 'scale(1.3000)');
+
+check('TRANSITION_IDENTITY carries the 2D-1 fields, frozen', Object.isFrozen(TRANSITION_IDENTITY) && TRANSITION_IDENTITY.clipPath === '' && TRANSITION_IDENTITY.overlay === null && TRANSITION_IDENTITY.filterDef === null);
+
 // Every camera preset the planner is offered must resolve to an implemented kind.
 const cameraPresets = motionRegistry
   .list('preset')
@@ -230,7 +300,8 @@ const cameraPresets = motionRegistry
   .filter((m) => m.category === 'camera');
 check('10 camera presets in planner vocabulary', cameraPresets.length === 10);
 check('every camera preset resolves implemented', cameraPresets.every((m) => m.def?.status === 'implemented'));
-check('heroReveal still resolves to a planned transition (excluded from prompt)', resolveMotion('heroReveal').def?.status === 'planned');
+check('heroReveal now resolves to an implemented transition (surfaces in prompt)', resolveMotion('heroReveal').def?.status === 'implemented');
+check('every transition in the registry is implemented (Phase 2D-1)', motionRegistry.list('transition').filter((n) => n !== 'testPlannedTransition').every((n) => motionRegistry.get('transition', n).status === 'implemented'));
 
 // --- perf sanity: fallback path allocates no new identity objects ---------------
 console.log('perf:');

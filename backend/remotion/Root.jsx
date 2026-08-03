@@ -4,6 +4,7 @@ import { Short, CTA_SEC } from './Short.jsx';
 import { Slide } from './Slide.jsx';
 import { MotionDemo, MOTION_DEMO_SEGMENT_SEC, MOTION_DEMO_SEGMENTS } from './MotionDemo.jsx';
 import { CameraDemo, CAMERA_DEMO_SEGMENT_SEC, CAMERA_DEMO_SEGMENTS } from './CameraDemo.jsx';
+import { TransitionDemo, TRANSITION_DEMO_SEGMENT_SEC, TRANSITION_DEMO_SEGMENTS } from './TransitionDemo.jsx';
 
 const FPS = 30;
 
@@ -52,6 +53,15 @@ export function Root() {
         height={1920}
         fps={FPS}
         durationInFrames={FPS * CAMERA_DEMO_SEGMENT_SEC * CAMERA_DEMO_SEGMENTS}
+        defaultProps={{}}
+      />
+      <Composition
+        id="TransitionDemo"
+        component={TransitionDemo}
+        width={1080}
+        height={1920}
+        fps={FPS}
+        durationInFrames={FPS * TRANSITION_DEMO_SEGMENT_SEC * TRANSITION_DEMO_SEGMENTS}
         defaultProps={{}}
       />
       <Composition
