@@ -90,9 +90,9 @@ if (stillsOnly) {
 console.log('stage 1 — planner validation:');
 const modernPlannerOutput = {
   shots: [
-    { start: 0, end: 5, imagePrompt: 'p1', icons: ['🏛️'], caption: '', emphasis: [], motion: 'slowZoom' },
-    { start: 6, end: 11, imagePrompt: 'p2', icons: ['📰'], caption: '', emphasis: [], motion: 'documentaryPan', transition: 'fade' },
-    { start: 12, end: 17, imagePrompt: 'p3', icons: ['🖼️'], caption: '', emphasis: [], motion: 'doesNotExist', camera: 'zoomOut' },
+    { start: 0, end: 5, imagePrompt: 'p1', icons: ['🏛️'], caption: '', emphasis: [], motion: 'slowZoom', effect: 'slowZoom' },
+    { start: 6, end: 11, imagePrompt: 'p2', icons: ['📰'], caption: '', emphasis: [], motion: 'documentaryPan', transition: 'fade', effect: 'vignette' },
+    { start: 12, end: 17, imagePrompt: 'p3', icons: ['🖼️'], caption: '', emphasis: [], motion: 'doesNotExist', camera: 'zoomOut', effect: 'dust' },
     { start: 18, end: 23, imagePrompt: 'p4', icons: ['🌆'], caption: '', emphasis: [], motion: 'newsPush', transition: 'notATransition', effect: 'filmGrain' },
   ],
 };
@@ -103,6 +103,9 @@ check('unknown preset is stripped, never reaches render', validated[2].motion ==
 check('legacy camera survives as fallback', validated[2].camera === 'zoomOut');
 check('unknown transition is stripped', validated[3].transition === null);
 check('valid effect passes through', validated[3].effect === 'filmGrain');
+check('valid effect kind passes through (Phase 2D-2)', validated[1].effect === 'vignette');
+check('effect preset passes through (Phase 2D-2)', validated[2].effect === 'dust');
+check('camera preset in the effect field is stripped', validated[0].effect === null);
 check('legacy camera still auto-assigned when absent', ['zoomIn', 'zoomOut', 'panLeft', 'panRight'].includes(validated[0].camera));
 
 // ===========================================================================
@@ -118,6 +121,8 @@ check('transition resolves with explicit duration', t1.def?.name === 'fade' && t
 const e3 = resolveMotion({ category: 'effect', kind: validated[3].effect });
 check('effect resolves through the registry', e3.def?.name === 'filmGrain' && e3.def.status === 'implemented');
 check('stripped motion resolves to disabled, not a crash', resolveMotion(validated[2].motion, { category: 'camera' }).def === null);
+const eDust = resolveMotion(validated[2].effect); // preset shorthand, as SceneMotion resolves it
+check('effect preset resolves to implemented particles, linear-eased', eDust.def?.name === 'particles' && eDust.def.status === 'implemented' && eDust.easing === 'linear');
 check('every registered preset resolves without throwing', motionRegistry.list('preset').every((p) => resolveMotion(p) !== null));
 
 // ===========================================================================

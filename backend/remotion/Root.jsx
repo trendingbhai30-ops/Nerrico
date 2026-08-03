@@ -5,6 +5,7 @@ import { Slide } from './Slide.jsx';
 import { MotionDemo, MOTION_DEMO_SEGMENT_SEC, MOTION_DEMO_SEGMENTS } from './MotionDemo.jsx';
 import { CameraDemo, CAMERA_DEMO_SEGMENT_SEC, CAMERA_DEMO_SEGMENTS } from './CameraDemo.jsx';
 import { TransitionDemo, TRANSITION_DEMO_SEGMENT_SEC, TRANSITION_DEMO_SEGMENTS } from './TransitionDemo.jsx';
+import { EffectsDemo, EFFECTS_DEMO_SEGMENT_SEC, EFFECTS_DEMO_SEGMENTS } from './EffectsDemo.jsx';
 
 const FPS = 30;
 
@@ -62,6 +63,15 @@ export function Root() {
         height={1920}
         fps={FPS}
         durationInFrames={FPS * TRANSITION_DEMO_SEGMENT_SEC * TRANSITION_DEMO_SEGMENTS}
+        defaultProps={{}}
+      />
+      <Composition
+        id="EffectsDemo"
+        component={EffectsDemo}
+        width={1080}
+        height={1920}
+        fps={FPS}
+        durationInFrames={FPS * EFFECTS_DEMO_SEGMENT_SEC * EFFECTS_DEMO_SEGMENTS}
         defaultProps={{}}
       />
       <Composition

@@ -95,6 +95,11 @@ export function MotionEffect({ spec }) {
   const state = useEffectMotion(spec);
   if (!state) return null;
   if (state.kind === 'filmGrain') return renderFilmGrain(state);
+  if (state.kind === 'blur') return renderBlur(state);
+  if (state.kind === 'glow') return renderGlow(state);
+  if (state.kind === 'noise') return renderNoise(state);
+  if (state.kind === 'particles') return renderParticles(state);
+  if (state.kind === 'vignette') return renderVignette(state);
   return null;
 }
 
@@ -157,6 +162,106 @@ export function TransitionShell({ state, children }) {
         })
       : null
   );
+}
+
+function renderBlur(state) {
+  // backdrop-filter blurs everything already painted beneath the overlay — the
+  // scene subtree never re-renders — and the layer's own opacity cross-blends
+  // the blurred copy over the sharp original beneath it.
+  const f = `blur(${state.radiusPx}px)`;
+  return h(AbsoluteFill, {
+    style: { backdropFilter: f, WebkitBackdropFilter: f, opacity: state.opacity, pointerEvents: 'none' },
+  });
+}
+
+function renderGlow(state) {
+  // Orton-style bloom: the backdrop, blurred and brightened, composited over
+  // the sharp original at partial opacity — one backdrop-filter layer, the
+  // frame is never drawn twice. An optional tint wash screens on top.
+  const f = `blur(${state.radiusPx}px) brightness(${state.brightness})`;
+  return h(AbsoluteFill, {
+    style: {
+      backdropFilter: f,
+      WebkitBackdropFilter: f,
+      opacity: state.opacity,
+      backgroundColor: state.color || undefined,
+      mixBlendMode: state.color ? 'screen' : undefined,
+      pointerEvents: 'none',
+    },
+  });
+}
+
+function renderNoise(state) {
+  // Same single-turbulence-rect budget as filmGrain, but straight turbulence
+  // pushed through a linear contrast curve — analog static, not film.
+  const intercept = (1 - state.contrast) / 2;
+  return h(
+    AbsoluteFill,
+    { style: { opacity: state.opacity, mixBlendMode: 'overlay', pointerEvents: 'none' } },
+    h(
+      'svg',
+      { width: '100%', height: '100%' },
+      h(
+        'filter',
+        { id: 'nme-noise' },
+        h('feTurbulence', {
+          type: 'turbulence',
+          baseFrequency: state.baseFrequency,
+          numOctaves: 2,
+          seed: state.seed,
+          stitchTiles: 'stitch',
+        }),
+        h('feColorMatrix', { type: 'saturate', values: '0' }),
+        h(
+          'feComponentTransfer',
+          null,
+          h('feFuncR', { type: 'linear', slope: state.contrast, intercept }),
+          h('feFuncG', { type: 'linear', slope: state.contrast, intercept }),
+          h('feFuncB', { type: 'linear', slope: state.contrast, intercept })
+        )
+      ),
+      h('rect', { width: '100%', height: '100%', filter: 'url(#nme-noise)' })
+    )
+  );
+}
+
+function renderParticles(state) {
+  const { t, look, field } = state;
+  // The field (spawn/size/speed/phase constants) is cached and frozen in
+  // effects/index.js — this loop is pure trig of `t` per particle. Travel
+  // wraps through a 110%-tall band (−5%..105%) so particles recycle
+  // off-frame; sway is a phase-offset sine; flicker breathes each particle's
+  // opacity at its own rate. Deterministic: same frame → same pixels.
+  const children = field.map((p, i) => {
+    const raw = p.y0 + look.travelPct * p.speedMul * t;
+    const y = ((raw % 110) + 110) % 110 - 5;
+    const x = p.x0 + Math.sin(t * Math.PI * 2 * p.speedMul + p.swayPhase) * look.swayPct;
+    const flicker = 1 - look.flicker * (0.5 + 0.5 * Math.sin(t * Math.PI * 2 * p.flickerRate + p.swayPhase));
+    const alpha = (p.opacity * flicker).toFixed(3);
+    return h('div', {
+      key: i,
+      style: {
+        position: 'absolute',
+        left: `${x.toFixed(2)}%`,
+        top: `${y.toFixed(2)}%`,
+        width: p.sizePx,
+        height: p.sizePx,
+        borderRadius: '50%',
+        backgroundColor: `rgba(${look.color}, ${alpha})`,
+        boxShadow: look.glowPx ? `0 0 ${look.glowPx}px rgba(${look.color}, ${alpha})` : undefined,
+      },
+    });
+  });
+  return h(AbsoluteFill, { style: { opacity: state.opacity, pointerEvents: 'none' } }, children);
+}
+
+function renderVignette(state) {
+  return h(AbsoluteFill, {
+    style: {
+      background: `radial-gradient(ellipse at 50% 50%, rgba(${state.color}, 0) ${state.innerPct}%, rgba(${state.color}, ${state.opacity}) ${state.outerPct}%)`,
+      pointerEvents: 'none',
+    },
+  });
 }
 
 function renderFilmGrain(state) {

@@ -37,6 +37,15 @@ const transitionOrNull = (name) => {
   return null;
 };
 
+// The "effect" field gets the same treatment as of Phase 2D-2: an effect KIND
+// ('vignette') or an effect-category PRESET ('dust'). Camera/transition
+// presets are still rejected.
+const effectOrNull = (name) => {
+  if (registeredOrNull('effect', name)) return name;
+  if (registeredOrNull('preset', name) && resolveMotion(name).category === 'effect') return name;
+  return null;
+};
+
 export function validateShots(data, wordCount) {
   const shots = data?.shots || data?.scenes;
   if (!Array.isArray(shots) || shots.length === 0) {
@@ -54,7 +63,7 @@ export function validateShots(data, wordCount) {
     camera: CAMERAS.includes(s.camera) ? s.camera : CAMERAS[i % CAMERAS.length],
     motion: registeredOrNull('preset', s.motion),
     transition: transitionOrNull(s.transition),
-    effect: registeredOrNull('effect', s.effect),
+    effect: effectOrNull(s.effect),
   }));
   for (const s of scenes) {
     if (!Number.isFinite(s.start) || !Number.isFinite(s.end)) {

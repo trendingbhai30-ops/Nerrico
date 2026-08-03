@@ -148,6 +148,19 @@ function transitionLegend() {
   return [implementedLegend('transition'), presets].filter(Boolean).join(', ');
 }
 
+// The "effect" field likewise accepts effect-category presets (dust, embers,
+// snow) once their kind is implemented — validated by effectOrNull in
+// src/core/scenes.js and resolved as preset shorthand in Short.jsx.
+function effectLegend() {
+  const presets = motionRegistry
+    .list('preset')
+    .map((name) => ({ name, resolved: resolveMotion(name), description: motionRegistry.get('preset', name).description }))
+    .filter(({ resolved }) => resolved.category === 'effect' && resolved.def?.status === 'implemented')
+    .map(({ name, description }) => `"${name}" (${description})`)
+    .join(', ');
+  return [implementedLegend('effect'), presets].filter(Boolean).join(', ');
+}
+
 // Motion Engine bullets for shotsPrompt. Every value the planner emits from
 // these is validated against the Motion Registry in src/core/scenes.js —
 // unknown names are stripped there, and the engine degrades gracefully anyway.
@@ -165,7 +178,7 @@ function motionFieldLines() {
       `- "transition": optional entrance for the shot. One of: ${transitions}. Use on roughly 1 in 3 shots where a softer entrance helps; omit the field for a straight cut.`
     );
   }
-  const effects = implementedLegend('effect');
+  const effects = effectLegend();
   if (effects) {
     lines.push(
       `- "effect": optional full-frame overlay. One of: ${effects}. The style already grades every shot — add this ONLY when a shot needs extra texture (archival flashback, decay). Omit otherwise.`

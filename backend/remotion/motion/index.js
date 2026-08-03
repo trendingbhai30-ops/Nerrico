@@ -28,5 +28,5 @@ export {
 } from './timing.js';
 export { CAMERA_IDENTITY, getCameraTransform, cameraTransformToCss } from './camera/index.js';
 export { TRANSITION_IDENTITY, getTransitionState } from './transitions/index.js';
-export { getEffectState } from './effects/index.js';
+export { getEffectState, getParticleField } from './effects/index.js';
 export { clamp, clamp01, lerp } from './utils.js';

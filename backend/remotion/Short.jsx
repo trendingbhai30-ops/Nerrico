@@ -27,10 +27,14 @@ function SceneMotion({ scene, children }) {
     if (motionRegistry.has('preset', scene.transition)) return scene.transition;
     return { category: 'transition', kind: scene.transition, durationInSeconds: SCENE_TRANSITION_SEC };
   }, [scene.transition]);
-  const effectSpec = useMemo(
-    () => (scene.effect ? { category: 'effect', kind: scene.effect } : null),
-    [scene.effect]
-  );
+  // scene.effect follows the same contract as of Phase 2D-2: a kind name
+  // ('vignette') or an effect-category preset ('dust') — presets pass through
+  // as shorthand so they keep their own easing/params.
+  const effectSpec = useMemo(() => {
+    if (!scene.effect) return null;
+    if (motionRegistry.has('preset', scene.effect)) return scene.effect;
+    return { category: 'effect', kind: scene.effect };
+  }, [scene.effect]);
   const enter = useTransitionMotion(transitionSpec, 'in');
   // TransitionShell (motion/hooks.js) renders the FULL TransitionState —
   // opacity/transform/filter plus the Phase 2D-1 fields (clipPath, flash

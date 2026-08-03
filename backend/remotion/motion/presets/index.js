@@ -137,6 +137,42 @@ motionRegistry.register('preset', {
   },
 });
 
+// Effect presets (Phase 2D-2) — particle moods with taste baked in. linear
+// easing on purpose: particles integrate eased progress as their clock, so a
+// curved easing would visibly warp drift speed across the scene.
+motionRegistry.register('preset', {
+  name: 'dust',
+  description: 'Floating dust motes — archival stillness, sunlit rooms',
+  config: {
+    category: 'effect',
+    kind: 'particles',
+    easing: 'linear',
+    params: { kind: 'dust' },
+  },
+});
+
+motionRegistry.register('preset', {
+  name: 'embers',
+  description: 'Rising embers — fire, destruction, aftermath',
+  config: {
+    category: 'effect',
+    kind: 'particles',
+    easing: 'linear',
+    params: { kind: 'embers', count: 28 },
+  },
+});
+
+motionRegistry.register('preset', {
+  name: 'snow',
+  description: 'Falling snow — winter, cold, quiet melancholy',
+  config: {
+    category: 'effect',
+    kind: 'particles',
+    easing: 'linear',
+    params: { kind: 'snow', count: 48 },
+  },
+});
+
 motionRegistry.register('preset', {
   name: 'heroReveal',
   description: 'Subject slides up into place with a settle — openings, titles',

@@ -11,6 +11,7 @@ import {
   getCameraTransform,
   getEasing,
   getEffectState,
+  getParticleField,
   getTransitionState,
   listEasings,
   motionProgress,
@@ -36,7 +37,7 @@ console.log('registry:');
 check('7 camera kinds', motionRegistry.list('camera').length === 7);
 check('6 transitions', motionRegistry.list('transition').length === 6);
 check('6 effects', motionRegistry.list('effect').length === 6);
-check('11 presets', motionRegistry.list('preset').length === 11);
+check('14 presets', motionRegistry.list('preset').length === 14);
 check('get() returns frozen defs', Object.isFrozen(motionRegistry.get('camera', 'zoom')));
 check('unknown name → null', motionRegistry.get('camera', 'dollyZoom') === null);
 let threw = false;
@@ -98,10 +99,9 @@ const fast = resolveMotion({ category: 'camera', kind: 'zoom', easing: 'linear',
 check('speed halves effective duration', motionProgress(fast, 30, 30) === 1);
 
 // --- dispatch fallbacks -----------------------------------------------------------
-// (All camera kinds are implemented as of Phase 2C and all transitions as of
-// Phase 2D-1 — synthetic planned kinds, registered only inside this test
-// process, prove the fallback contract. Effect fallbacks still use a real
-// planned kind: noise.)
+// (Every kind in every category is implemented as of Phase 2D-2 — synthetic
+// planned kinds, registered only inside this test process, prove the
+// fallback contract for all three categories.)
 console.log('dispatch:');
 motionRegistry.register('camera', {
   name: 'testPlanned',
@@ -122,8 +122,15 @@ motionRegistry.register('transition', {
 });
 const plannedTrans = resolveMotion({ category: 'transition', kind: 'testPlannedTransition' });
 check('planned transition → shared identity', getTransitionState(plannedTrans, 0.5) === TRANSITION_IDENTITY);
-const noise = resolveMotion({ category: 'effect', kind: 'noise' }); // still planned
-check('planned effect → null (skip)', getEffectState(noise, 0.5) === null);
+motionRegistry.register('effect', {
+  name: 'testPlannedEffect',
+  category: 'effect',
+  status: 'planned',
+  description: 'test-only planned kind',
+  params: {},
+});
+const plannedFx = resolveMotion({ category: 'effect', kind: 'testPlannedEffect' });
+check('planned effect → null (skip)', getEffectState(plannedFx, 0.5) === null);
 const hero = resolveMotion('heroReveal'); // transition (slide)
 check('camera dispatch of non-camera motion → identity', getCameraTransform(hero, 0.5) === CAMERA_IDENTITY);
 
@@ -293,6 +300,56 @@ check('morph intensity scales the settle', getTransitionState(resolveMotion({ ca
 
 check('TRANSITION_IDENTITY carries the 2D-1 fields, frozen', Object.isFrozen(TRANSITION_IDENTITY) && TRANSITION_IDENTITY.clipPath === '' && TRANSITION_IDENTITY.overlay === null && TRANSITION_IDENTITY.filterDef === null);
 
+// --- Phase 2D-2 effect library (blur, glow, noise, particles, vignette) ----------
+console.log('effect library (Phase 2D-2):');
+
+check('blur is implemented', motionRegistry.get('effect', 'blur').status === 'implemented');
+const blurIn = resolveMotion({ category: 'effect', kind: 'blur' }); // direction defaults 'in'
+check('blur in arrives at full radius', getEffectState(blurIn, 0).kind === 'blur' && close(getEffectState(blurIn, 0).radiusPx, 6));
+check('blur ramp is inside the settle window', close(getEffectState(blurIn, 0.175).radiusPx, 3));
+check('blur resolves sharp at the settle point (overlay dropped)', getEffectState(blurIn, 0.35) === null && getEffectState(blurIn, 0.9) === null);
+const blurOut = resolveMotion({ category: 'effect', kind: 'blur', direction: 'out' });
+check('blur out defocuses only toward the cut', getEffectState(blurOut, 0.5) === null && close(getEffectState(blurOut, 1).radiusPx, 6));
+check('blur opacity blends and intensity scales', close(getEffectState(resolveMotion({ category: 'effect', kind: 'blur', intensity: 2, params: { opacity: 0.6 } }), 0).radiusPx, 12) && close(getEffectState(blurIn, 0).opacity, 1) && close(getEffectState(resolveMotion({ category: 'effect', kind: 'blur', params: { opacity: 0.6 } }), 0).opacity, 0.6));
+
+check('glow is implemented', motionRegistry.get('effect', 'glow').status === 'implemented');
+const glow = resolveMotion({ category: 'effect', kind: 'glow' }); // envelope 'in': builds across the window
+check('glow starts dark (envelope 0 → overlay dropped)', getEffectState(glow, 0) === null);
+const gFull = getEffectState(glow, 1);
+check('glow reaches its configured peak', !!gFull && close(gFull.opacity, 0.55) && close(gFull.brightness, 1.3) && close(gFull.radiusPx, 16));
+check('glow hold pins full strength', close(getEffectState(resolveMotion({ category: 'effect', kind: 'glow', direction: 'hold' }), 0).opacity, 0.55));
+check('glow intensity lifts brightness and clamps opacity', close(getEffectState(resolveMotion({ category: 'effect', kind: 'glow', intensity: 2 }), 1).brightness, 1.6) && getEffectState(resolveMotion({ category: 'effect', kind: 'glow', intensity: 2 }), 1).opacity === 1);
+check('glow tint passes through', getEffectState(resolveMotion({ category: 'effect', kind: 'glow', params: { color: 'rgba(255,140,60,0.12)' } }), 1).color === 'rgba(255,140,60,0.12)');
+
+check('noise is implemented', motionRegistry.get('effect', 'noise').status === 'implemented');
+const noiseFx = resolveMotion({ category: 'effect', kind: 'noise' });
+const n = getEffectState(noiseFx, 0.05);
+check('noise returns overlay state', !!n && n.kind === 'noise' && close(n.opacity, 0.14) && close(n.baseFrequency, 0.9) && close(n.contrast, 1.6));
+check('noise is deterministic and animated', Number.isInteger(n.seed) && getEffectState(noiseFx, 0.05).seed === n.seed && getEffectState(noiseFx, 0.9).seed !== n.seed);
+check('noise seed/contrast are configurable', getEffectState(resolveMotion({ category: 'effect', kind: 'noise', params: { seed: 40 } }), 0.05).seed === n.seed + 37 && close(getEffectState(resolveMotion({ category: 'effect', kind: 'noise', params: { contrast: 2.5 } }), 0.05).contrast, 2.5));
+check('noise intensity 0 disables', getEffectState(resolveMotion({ category: 'effect', kind: 'noise', intensity: 0 }), 0.5) === null);
+
+check('particles is implemented', motionRegistry.get('effect', 'particles').status === 'implemented');
+const dustFx = resolveMotion({ category: 'effect', kind: 'particles' });
+const pState = getEffectState(dustFx, 0.3);
+check('particles carries a full field', !!pState && pState.field.length === 40 && Object.isFrozen(pState.field) && Object.isFrozen(pState.field[0]));
+check('particle field is CACHED across frames (no per-frame rebuild)', getEffectState(dustFx, 0.7).field === pState.field);
+check('particle constants are deterministic', close(pState.field[5].x0, getParticleField('dust', 40, 7)[5].x0));
+const emberFx = resolveMotion({ category: 'effect', kind: 'particles', params: { kind: 'embers' } });
+check('particle kinds differ (dust vs embers)', getEffectState(emberFx, 0.3).look !== pState.look && getEffectState(emberFx, 0.3).field !== pState.field);
+check('unknown particle kind falls back to dust', getEffectState(resolveMotion({ category: 'effect', kind: 'particles', params: { kind: 'confetti' } }), 0.3).look === pState.look);
+check('particle count is perf-clamped', getEffectState(resolveMotion({ category: 'effect', kind: 'particles', params: { count: 9999 } }), 0.3).field.length === 120);
+check('particles opacity 0 disables', getEffectState(resolveMotion({ category: 'effect', kind: 'particles', intensity: 0 }), 0.3) === null);
+
+check('vignette is implemented', motionRegistry.get('effect', 'vignette').status === 'implemented');
+const vig = resolveMotion({ category: 'effect', kind: 'vignette' }); // envelope 'in': eases the frame darker
+check('vignette ramps in from nothing', getEffectState(vig, 0) === null);
+const v1 = getEffectState(vig, 1);
+check('vignette geometry from spread/softness', !!v1 && close(v1.opacity, 0.4) && v1.innerPct === 55 && v1.outerPct === 100);
+check('vignette hold pins full strength', close(getEffectState(resolveMotion({ category: 'effect', kind: 'vignette', direction: 'hold' }), 0).opacity, 0.4));
+check('vignette radius/softness/opacity configurable', getEffectState(resolveMotion({ category: 'effect', kind: 'vignette', params: { spread: 0.3, softness: 0.9 } }), 1).innerPct === 30 && getEffectState(resolveMotion({ category: 'effect', kind: 'vignette', params: { spread: 0.3, softness: 0.9 } }), 1).outerPct === 120 && close(getEffectState(resolveMotion({ category: 'effect', kind: 'vignette', intensity: 2 }), 1).opacity, 0.8));
+check('vignette spread is clamped', getEffectState(resolveMotion({ category: 'effect', kind: 'vignette', params: { spread: 2 } }), 1).innerPct === 100);
+
 // Every camera preset the planner is offered must resolve to an implemented kind.
 const cameraPresets = motionRegistry
   .list('preset')
@@ -302,6 +359,14 @@ check('10 camera presets in planner vocabulary', cameraPresets.length === 10);
 check('every camera preset resolves implemented', cameraPresets.every((m) => m.def?.status === 'implemented'));
 check('heroReveal now resolves to an implemented transition (surfaces in prompt)', resolveMotion('heroReveal').def?.status === 'implemented');
 check('every transition in the registry is implemented (Phase 2D-1)', motionRegistry.list('transition').filter((n) => n !== 'testPlannedTransition').every((n) => motionRegistry.get('transition', n).status === 'implemented'));
+check('every effect in the registry is implemented (Phase 2D-2)', motionRegistry.list('effect').filter((n) => n !== 'testPlannedEffect').every((n) => motionRegistry.get('effect', n).status === 'implemented'));
+const effectPresets = motionRegistry
+  .list('preset')
+  .map((name) => resolveMotion(name))
+  .filter((m) => m.category === 'effect');
+check('3 effect presets in planner vocabulary (dust, embers, snow)', effectPresets.length === 3);
+check('every effect preset resolves implemented, linear-eased', effectPresets.every((m) => m.def?.status === 'implemented' && m.easing === 'linear'));
+check('effect presets carry their particle kind', resolveMotion('embers').params.kind === 'embers' && resolveMotion('snow').params.kind === 'snow' && resolveMotion('dust').params.kind === 'dust');
 
 // --- perf sanity: fallback path allocates no new identity objects ---------------
 console.log('perf:');

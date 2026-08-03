@@ -4,6 +4,22 @@ All completed phases and major architectural changes, newest first. Add an entry
 
 ---
 
+## 2026-08-03 — Phase 2D-2: Motion Effects ✅
+
+Every effect in the NME vocabulary is now implemented — the effect library is complete (6 kinds, all `status: 'implemented'`), which makes **the entire Phase 2A motion vocabulary implemented**. Additive: `apply` functions on existing definitions, renderer branches in the existing `MotionEffect`, three new presets; zero architecture changes.
+
+- **Effect `blur`**: full-frame gaussian via `backdrop-filter` — blurs what's already painted beneath, the scene subtree never re-renders. Focus semantics match camera focusPull ('in' arrives soft → resolves sharp, 'out' defocuses toward the cut); the ramp is confined to a `settle` window (default 35%) so a whole-scene spec doesn't leave content soft for the entire read; sub-0.1px radius drops the layer; `opacity` < 1 cross-blends blurred over sharp.
+- **Effect `glow`**: Orton-style bloom — the backdrop blurred AND brightened, composited over the sharp original at partial opacity; bright areas spill light, dark areas stay grounded. One backdrop-filter layer, nothing drawn twice. Optional screen-blended tint via `color`.
+- **Effect `noise`**: analog static — straight SVG `turbulence` (not fractalNoise) pushed through a linear contrast curve (`feComponentTransfer`), harsher than filmGrain by design. Seed steps with progress like filmGrain: animated, but every frame deterministic.
+- **Effect `particles`**: dust | embers | snow. Per-particle constants (spawn, size, speed, phases) derived from the sin-hash (NO RNG) and **cached frozen per (kind, count, seed)** — per-frame work is pure trig of `t`; travel wraps a 110% band so particles recycle off-frame; flicker breathes per-particle opacity. Count clamped to 120; unknown kind falls back to dust rather than rendering nothing.
+- **Effect `vignette`**: one radial-gradient overlay — `spread`/`softness` set static geometry, the envelope animates opacity (animating gradient stops would re-rasterize every frame for no visible gain).
+- **The effect envelope**: for ramped effects, `direction` doubles as the animation envelope — 'in' ramps in (global default), 'out' ramps out, 'hold' pins full strength. Constant-strength effects (filmGrain/noise/particles) ignore it.
+- **3 effect presets** (14 total): `dust`, `embers`, `snow` — particle moods with `easing: 'linear'` pinned, because particles integrate eased progress as their clock and a curved easing would warp drift speed. The planner's `"effect"` field now accepts kinds OR effect-category presets, mirroring 2D-1's transition contract exactly: offered by `effectLegend()` (prompts.js), validated by `effectOrNull()` (scenes.js; camera/transition presets rejected), resolved as preset shorthand in `SceneMotion` (Short.jsx). Prompt vocabulary grew automatically: blur/glow/noise/particles/vignette/dust/embers/snow all verified IN PROMPT with zero prompt-code changes.
+- **EffectsDemo**: `remotion/EffectsDemo.jsx` (7 labeled segments reusing MotionDemo's Backdrop/Label; zero hand-rolled animation math; label painted ABOVE the overlay so a sharp label over a blurred backdrop proves backdrop-filter scoping) + `scripts/render-effects-demo.js` → `data/effects-demo/` mp4 + 21 stills. Frame-verified: defocus resolving sharp, bloom halo, static, all three particle looks, edge darkening.
+- **Validated**: motion smoke test **159/159** (was 124; adds per-effect math, particle-field caching/determinism, "every registered effect is implemented", effect-preset resolution; the planned-effect fallback contract now proven with a synthetic test-only kind), pipeline test **17/17** (was 13; adds effect kind/preset pass-through + cross-category rejection through the real validator), baseline pixel-compare max per-channel delta 8/255 (grain/AA noise — legacy path untouched), fresh server + all endpoints healthy, full re-render of `d2fe791fdb84` RENDER OK, frontend `tsc` + `vite build` clean, oxlint 1 pre-existing warning only. NOT committed — awaiting user approval.
+
+---
+
 ## 2026-08-03 — Phase 2D-1: Motion Transitions ✅
 
 Every transition in the NME vocabulary is now implemented — the transition library is complete (6 kinds, all `status: 'implemented'`). Additive: `apply` functions on existing definitions, one new render component, zero architecture changes. (Work spanned two sessions — an API-limit interruption left slide/whip/flash/paperReveal + the `TransitionState` extension done; this session recovered state and finished the rest.)
