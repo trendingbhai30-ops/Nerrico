@@ -13,6 +13,7 @@ import { fetchCommonsImage } from '../providers/commons.js';
 import { scriptPrompt } from '../content/prompts.js';
 import { getMode } from '../content/modes.js';
 import { brandingProps } from '../content/branding.js';
+import { resolveVisualStyle, composeImagePrompt } from '../content/stylebible/index.js';
 import { planScenes } from './scenes.js';
 import { planSlides } from './slides.js';
 import { renderShort, renderSlides } from './render.js';
@@ -69,7 +70,12 @@ async function stepScenes(id) {
   const p = getProject(id);
   updateProject(id, { status: 'planning_scenes', error: null, progress: { step: 'Designing the scenes…', percent: 32 } });
   const { words } = JSON.parse(fs.readFileSync(artifactPath(id, ARTIFACTS.timing), 'utf8'));
-  const scenes = await planScenes({ title: p.title, script: p.script, words, style: p.style });
+  const scenes = await planScenes({ title: p.title, script: p.script, words, style: p.style, visualStyle: p.visualStyle });
+  // The Style Bible's consistency system: every AI image request is the
+  // planner's per-shot description wrapped in the style's prefix/anchors/suffix
+  // — composed deterministically here, never ad-hoc. scenes.json keeps the raw
+  // planner prompt (s.imagePrompt); the composed prompt exists only per request.
+  const visual = resolveVisualStyle(p.visualStyle, p.style);
 
   // Cinematic shots — visual-priority chain, every shot MUST get imagery:
   //   1. AI image (chain in providers/images, keyless Pollinations last resort)
@@ -84,7 +90,7 @@ async function stepScenes(id) {
     updateProject(id, {
       progress: { step: `Creating visual ${n + 1} of ${shotIdxs.length}…`, percent: 33 + Math.round((n / shotIdxs.length) * 6) },
     });
-    const ok = await generateImage(s.imagePrompt, artifactPath(id, ARTIFACTS.shotPng(i)), { seed: i }).catch(() => null);
+    const ok = await generateImage(composeImagePrompt(visual, s.imagePrompt), artifactPath(id, ARTIFACTS.shotPng(i)), { seed: i }).catch(() => null);
     if (ok) {
       s.image = ARTIFACTS.shotPng(i);
       continue;

@@ -12,6 +12,7 @@ import {
 import { getVoice } from '../../content/voices.js';
 import { LANGUAGES, FORMATS, getMode } from '../../content/modes.js';
 import { STYLES } from '../../content/styles.js';
+import { styleBible, defaultVisualStyle } from '../../content/stylebible/index.js';
 import { validateSlides } from '../../core/slides.js';
 import { startScriptGeneration, startProduction, retry, isRunning } from '../../core/pipeline.js';
 
@@ -30,6 +31,7 @@ function publicProject(p) {
     mode: p.mode,
     language: p.language,
     style: p.style,
+    visualStyle: p.visualStyle,
     format: p.format,
     script: p.script,
     slides: p.slides,
@@ -62,12 +64,19 @@ projectsRouter.post('/', (req, res) => {
     mode = 'normal',
     language = 'english',
     style = 'vox',
+    visualStyle,
     format = 'reel',
   } = req.body || {};
   if (!title || typeof title !== 'string') throw new HttpError(400, 'A title is required');
   if (!getMode(mode)) throw new HttpError(400, 'Unknown mode');
   if (!LANGUAGES.includes(language)) throw new HttpError(400, 'Unknown language');
   if (!STYLES[style]) throw new HttpError(400, 'Unknown style');
+  // visualStyle is optional (defaults to the render style's codified look) but
+  // when provided it must be a selectable Style Bible entry — 'future' styles
+  // are declared, not offered.
+  if (visualStyle !== undefined && styleBible.get(visualStyle)?.status !== 'active') {
+    throw new HttpError(400, 'Unknown visual style');
+  }
   if (!FORMATS.includes(format)) throw new HttpError(400, 'Unknown format');
   const researchText = typeof research === 'string' ? research.trim() : '';
   if (!researchText && !getMode(mode).researchOptional) {
@@ -81,6 +90,7 @@ projectsRouter.post('/', (req, res) => {
     mode,
     language,
     style,
+    visualStyle: visualStyle || defaultVisualStyle(style),
     format,
   });
   res.status(201).json({ id: project.id });

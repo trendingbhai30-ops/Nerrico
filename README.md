@@ -16,8 +16,8 @@ Built around a timestamp-driven pipeline: AI-generated narration with word-level
 | **Voice Generation** | ✅ Available | ElevenLabs TTS with word-level timestamps (English + Hinglish) |
 | **Stock Media Integration** | ✅ Available | AI images (Pollinations), stock photos (Openverse), and archival photos (Wikimedia Commons) with automatic license attribution |
 | **Project Management** | ✅ Available | Every video is a project with reviewable script, scenes, assets, and retry support |
-| **Style Presets** | 🚧 Planned | Expanding beyond the current Vox / Luxury / Cinematic styles into a full style system ("Style Bible") |
-| **Motion Graphics** | 🔨 In development | Nerrico Motion Engine (NME): style-agnostic registry of camera moves, transitions, and effects — foundation complete, implementations in progress ([architecture](docs/motion-engine.md)) |
+| **Style Presets** | ✅ Available | Style Bible: 9 selectable visual looks (documentary, history, finance, modern-tech, and more) as validated, structured style definitions ([architecture](docs/style-bible.md)) |
+| **Motion Graphics** | ✅ Available | Nerrico Motion Engine (NME): style-agnostic registry of camera moves, transitions, and effects — full vocabulary implemented and planner-reachable ([architecture](docs/motion-engine.md)) |
 | **Caption Engine** | 🚧 Planned | Advanced word-synced caption system with per-style typography |
 | **User-provided AI APIs** | 🚧 Planned | Bring your own keys — Gemini, OpenAI, premium ElevenLabs, Pexels/Pixabay — for higher quality and throughput |
 
@@ -84,14 +84,16 @@ Nerrico is developed in **explicit, sequential phases**. Each phase is scoped up
 >
 > ✅ **Phase 2.5 — Motion Engine Integration** complete: the engine now powers the production styles (cinematic camera/grain/fade, vox Ken Burns), and the AI scene planner emits registry-validated motion presets, transitions, and effects.
 >
-> ✅ **Phase 2C — Advanced Camera Motion Library** complete: all seven camera kinds implemented (zoom, pan, rotate, orbit, push, shake, focus pull) with ten planner-ready presets, proven by a rendered validation demo. Remaining transitions and effects follow in Phase 2D.
+> ✅ **Phase 2C — Advanced Camera Motion Library** complete: all seven camera kinds implemented (zoom, pan, rotate, orbit, push, shake, focus pull) with ten planner-ready presets, proven by a rendered validation demo.
+>
+> ✅ **Phase 2D — Transitions & Effects** complete: all six transitions (slide, whip, flash, paper reveal, morph, fade) and all six effects (film grain, blur, glow, noise, particles, vignette) implemented — the entire declared motion vocabulary is live and planner-reachable. **Phase 2 (Motion Engine) is complete.**
+>
+> ✅ **Phase 3 — Style Bible** complete: a registry of validated visual style definitions — 9 selectable looks across the three render styles, a deterministic image-prompt consistency system, and a shot planner composed entirely from structured style data ([architecture](docs/style-bible.md)).
 
 **Upcoming phases:**
 
 | Phase | Focus |
 |---|---|
-| 2 | Motion Engine |
-| 3 | Style Bible |
 | 4 | Asset Engine |
 | 5 | Voice Engine |
 | 6 | Caption Engine |
@@ -150,13 +152,13 @@ Additional design docs live in [`docs/`](docs/), including the backend API contr
 ## Roadmap
 
 - [x] Phase 1 — Foundation
-- [ ] Phase 2 — Motion Engine
+- [x] Phase 2 — Motion Engine
   - [x] Phase 2A — Motion Engine foundation (registry, types, presets, timing)
   - [x] Phase 2B — First motion implementations, PoC (slow zoom, pan, fade, film grain + MotionDemo)
   - [x] Phase 2.5 — Motion Engine integration (styles migrated onto NME, planner emits registry-validated motion)
   - [x] Phase 2C — Advanced Camera Motion Library (rotate, orbit, push, shake, focus pull + presets + CameraDemo)
-  - [ ] Phase 2D — Remaining transitions & effects
-- [ ] Phase 3 — Style Bible
+  - [x] Phase 2D — Remaining transitions & effects (TransitionShell + MotionEffect renderers, TransitionDemo + EffectsDemo)
+- [x] Phase 3 — Style Bible (visual style registry, 9 selectable looks, prompt consistency system)
 - [ ] Phase 4 — Asset Engine
 - [ ] Phase 5 — Voice Engine
 - [ ] Phase 6 — Caption Engine

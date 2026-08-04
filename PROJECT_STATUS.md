@@ -1,11 +1,11 @@
 # PROJECT_STATUS.md
 
 > Snapshot of where Nerrico stands right now. Update this file at the end of every phase.
-> Last updated: **2026-08-03** (after Phase 2D-2 — Motion Effects)
+> Last updated: **2026-08-04** (after Phase 3 — Style Bible)
 
 ## Current Phase
 
-**Phase 2D-2 (Motion Effects) is COMPLETE and validated (NOT yet committed — awaiting user approval).** All 6 effects are implemented and in the planner vocabulary (including the dust/embers/snow particle presets). With this, **the entire Phase 2A motion vocabulary is implemented** — Phase 2 (Motion Engine) is functionally complete. Waiting on user approval before any git operations and before starting the next phase (Phase 3 — Style Bible, per the README roadmap).
+**Phase 3 (Style Bible) is COMPLETE and validated (NOT yet committed — working tree changes awaiting user approval).** The planner's visual language now lives in a registry of validated style definitions (`backend/src/content/stylebible/`, 9 active + 2 future looks), projects carry a `visualStyle`, the API exposes and validates it, and every AI image request is composed through the deterministic consistency system. Architecture doc: `docs/style-bible.md`. Next phase per the README roadmap: **Phase 4 — Asset Engine**. Do not start it without user approval.
 
 ## Completed Work
 
@@ -76,6 +76,17 @@
 - **EffectsDemo** (`remotion/EffectsDemo.jsx` + `scripts/render-effects-demo.js`): 7 labeled segments (blur, glow, noise, dust, embers, snow, vignette) → `data/effects-demo/` mp4 + 21 stills. Frame-verified (blurred backdrop under a sharp label, bloom halo, static, all three particle looks, edge darkening).
 - **Validated**: motion smoke test 159/159 (was 124), pipeline test 17/17 (was 13; adds effect kind/preset pass-through + cross-category rejection), baseline pixel-compare max delta 8/255 (grain/AA noise — legacy path untouched), fresh server + all endpoints healthy, full re-render of `d2fe791fdb84` RENDER OK, frontend `tsc` + `vite build` clean, oxlint 1 pre-existing warning only.
 
+### Phase 3 — Style Bible (2026-08-04)
+
+- **Style Bible** built at `backend/src/content/stylebible/` — the Motion Registry's visual counterpart: every look is a validated, deep-frozen structured definition (registry.js / schema.js / styles/ / index.js). Full architecture doc: `docs/style-bible.md`.
+- **11 definitions**: 9 active (production defaults `cinematic`, `paper-collage` (vox), `luxury` — codifying the shipped looks so defaults preserve behaviour — plus cinematic-family `documentary`, `ai-documentary`, `history`, `finance`, `modern-tech`, `minimal`) + 2 `status: 'future'` (`pixar-style`, `anime` — declared/validated, not offered).
+- **Schema enforcement at import time**: shape checks; cross-references (real renderStyle; every motion preference must resolve to an IMPLEMENTED Motion Registry kind/preset of the right category); incompatible-option detection (forbidden terms in the style's own prompt vocabulary throw).
+- **Planner composed from data**: `shotsPrompt({ …, visual })` owns only the scaffolding — philosophy/composition/framing/lighting/palette/typography/forbidden/consistency all come from the definition, and the motion vocabulary offered is narrowed to the style's preferences (output still validated against the full registry).
+- **Consistency system**: `composeImagePrompt` (called only in pipeline.js) wraps every AI image request as prefix → shot description → prompt anchors → suffix, comma-joined, 1200-char cap — all shots of one video share medium/palette/grade.
+- **API + storage**: `visualStyle` persisted on projects (legacy projects backfilled with their render style's default on read), optional on POST /api/projects (400 on unknown/future ids), always present on project GET, and `GET /api/options` gained `visualStyles` (9 options with `renderStyle` for picker filtering). Contract v2.1 in `docs/api-contract.md`; frontend types extended (no UI work — pickers must populate from /api/options).
+- **Smoke test**: `scripts/test-stylebible.js` — 71 pure-Node checks (registry, schema accept/reject, per-style implemented-motion re-verification, resolution fallbacks, options shape, prompt composition per active style).
+- **Validated**: Style Bible smoke 71/71, motion smoke 159/159, pipeline test 17/17, baseline pixel-compare max delta 8/255, fresh server + all endpoints healthy (options, create-time 400s, explicit/default/legacy-backfill projects verified live), full re-render of `d2fe791fdb84` RENDER OK, frontend `tsc` + `vite build` clean, oxlint 1 pre-existing warning only.
+
 ## Pending Phases
 
 - Roadmap after Phase 2 (user-defined, see README): 3 Style Bible, 4 Asset Engine, 5 Voice Engine, 6 Caption Engine, 7 UI, 8 Authentication & Firebase, 9 YouTube Upload, 10 Public Launch.
@@ -96,13 +107,13 @@
   - `config/` — `env.js` (sole reader of process.env), `constants.js`
   - `utils/` — logger (scopes + LOG_LEVEL), `errors.js` (HttpError), `json.js` (extractJson), `download.js`
   - `providers/` — `claude.js` (spawned `claude -p`, incl. `askClaudeJson` retry helper), `elevenlabs.js`, `images/` (one file per provider + `index.js` registry), `stock.js`, `commons.js`
-  - `content/` — `modes.js`, `styles.js`, `voices.js`, `prompts.js`, `branding.js`
+  - `content/` — `modes.js`, `styles.js`, `voices.js`, `prompts.js`, `branding.js`, `stylebible/` (visual style registry + schema + definitions; see `docs/style-bible.md`)
   - `core/` — `store.js`, `pipeline.js`, `scenes.js`, `slides.js`, `render.js`
   - `api/` — `app.js`, `routes/{meta,voices,projects}.js`, `middleware.js`
 - **Rendering**: `backend/remotion/` — `Short.jsx`, `Slide.jsx`, `scenes.jsx`, `styles/{vox,luxury,cinematic}.jsx`, `theme.js`. Untouched by Phase 1.
 - **Motion Engine (NME)**: `backend/remotion/motion/` — registry, types, config, timing, camera/transitions/effects/presets, Remotion hooks. Architecture in `docs/motion-engine.md`. **The full Phase 2A vocabulary is implemented (as of 2D-2)**: ALL 7 camera kinds (zoom, pan, rotate, orbit, push, shake, focusPull), ALL 6 transitions (fade, slide, whip, flash, paperReveal, morph — rendered via `TransitionShell` in hooks.js), ALL 6 effects (filmGrain, blur, glow, noise, particles, vignette — rendered via `MotionEffect` branches in hooks.js), 14 presets. **Integrated (Phase 2.5)**: cinematic camera/grain/fade and vox Ken Burns run through the engine; `Short.jsx` applies planner-emitted transitions/effects to every style; the shot planner emits registry-validated `motion`/`transition`/`effect` fields (the transition field takes transition presets like heroReveal since 2D-1; the effect field takes effect presets dust/embers/snow since 2D-2). Integration test: `scripts/test-motion-pipeline.js` (+ visual baseline in `data/motion-pipeline/`). Demos: `scripts/render-camera-demo.js` → `data/camera-demo/`, `scripts/render-transition-demo.js` → `data/transition-demo/`, `scripts/render-effects-demo.js` → `data/effects-demo/`.
 - **Project data**: `backend/data/projects/<id>/project.json` + assets. Server reads from disk on `/retry`, so editing project.json then retrying works.
-- **Content matrix**: modes = normal | realestate; languages = english | hinglish | hindi (hindi writes Devanagari and defaults to library voice "Viraj" — blocked on free tier, override via `HINDI_VOICE_ID`); styles = vox | luxury | cinematic (cinematic is reels-only; carousels reuse luxury slides); formats = reel | carousel.
+- **Content matrix**: modes = normal | realestate; languages = english | hinglish | hindi (hindi writes Devanagari and defaults to library voice "Viraj" — blocked on free tier, override via `HINDI_VOICE_ID`); styles = vox | luxury | cinematic (cinematic is reels-only; carousels reuse luxury slides); formats = reel | carousel; **visualStyle** (Phase 3) = a Style Bible look per project — 9 selectable via `GET /api/options` → `visualStyles`, defaulting to the render style's codified look (cinematic → cinematic, vox → paper-collage, luxury → luxury). Smoke test: `scripts/test-stylebible.js` (71 checks).
 - **Git repo initialized** (local only, one commit per phase since Phase 1). No cloud services (zero budget).
 
 ## APIs / Providers Integrated
@@ -132,4 +143,4 @@
 
 ## Next Planned Phase
 
-**Phase 3 — Style Bible** (per the user's README roadmap). Phase 2 (Motion Engine) is functionally complete: the whole declared vocabulary is implemented, planner-reachable, and E2E-validated. Note: the long-running backend server caches its Remotion bundle per process — restart it after motion/ changes (freshly restarted at the end of Phase 2D-2). Phase 2D-2 is NOT yet committed to git — user approval pending. Do not start Phase 3 without user approval.
+**Phase 4 — Asset Engine** (per the user's README roadmap). Phase 3 (Style Bible) is complete and validated but NOT yet committed — the working tree holds the Phase 3 changes; commit needs user approval. Note: the long-running backend server caches its Remotion bundle per process — restart it after `src/` or `motion/` changes (freshly restarted during Phase 3 validation). Do not start Phase 4 without user approval. Frontend follow-up owned by the user: a `visualStyle` picker populated from `/api/options` → `visualStyles`, filtered by the selected render style.

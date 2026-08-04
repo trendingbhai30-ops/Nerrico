@@ -39,7 +39,9 @@ Nerrico/
 │   │   ├── config/          ← env.js (ONLY file reading process.env), constants.js
 │   │   ├── utils/           ← logger.js, errors.js (HttpError), json.js, download.js
 │   │   ├── providers/       ← claude.js, elevenlabs.js, images/ (registry), stock.js, commons.js
-│   │   ├── content/         ← modes.js, styles.js, voices.js, prompts.js, branding.js
+│   │   ├── content/         ← modes.js, styles.js, voices.js, prompts.js, branding.js,
+│   │   │   └── stylebible/  ←   Style Bible: registry.js, schema.js, styles/ (one file
+│   │   │                        per look), index.js (see docs/style-bible.md)
 │   │   ├── core/            ← store.js, pipeline.js, scenes.js, slides.js, render.js
 │   │   └── api/             ← app.js, middleware.js, routes/{meta,voices,projects}.js
 │   ├── remotion/            ← compositions: Short.jsx, Slide.jsx, scenes.jsx,
@@ -49,7 +51,7 @@ Nerrico/
 │   │                            (see docs/motion-engine.md)
 │   └── scripts/             ← preview-frames.js, preview-frames-branded.js, test-slides.js,
 │                              test-browser.js, test-render.js, test-motion.js,
-│                              render-motion-demo.js (diagnostics)
+│                              test-stylebible.js, render-motion-demo.js (diagnostics)
 └── frontend/                ← Vite + React + TypeScript (USER'S domain — Antigravity)
     └── src/                 ← config/constants.ts, utils/, full API types, zero `any`
 ```
@@ -65,6 +67,7 @@ Nerrico/
 - **New image providers**: one file per provider under `src/providers/images/`, registered in its `index.js`.
 - **Prompts** live in `src/content/prompts.js`. When refactoring, keep prompts byte-identical unless the change is deliberately about prompt quality.
 - **Motion (NME)**: new motions are one `motionRegistry.register()` call in the right category module (`remotion/motion/{camera,transitions,effects}/index.js`) + an `apply(t, motion)` function; presets are config-only in `presets/index.js`. Only `hooks.js` may import React/Remotion — everything else stays Node-testable. Run `node scripts/test-motion.js` after any `motion/` change. Full architecture: `docs/motion-engine.md`.
+- **Visual styles (Style Bible)**: new looks are one definition file in `src/content/stylebible/styles/` + an import line in its `index.js` — registration validates the definition at import time (motion preferences must be implemented registry entries; forbidden terms must not appear in the style's own prompt vocabulary). Never compose AI image prompts ad-hoc — go through `composeImagePrompt`. Run `node scripts/test-stylebible.js` after any `stylebible/` change. Full architecture: `docs/style-bible.md`.
 - **Frontend API base**: `VITE_API_BASE_URL`, but a localStorage override wins. Keep both working.
 
 ## Architecture Principles

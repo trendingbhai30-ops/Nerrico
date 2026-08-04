@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { MODES, LANGUAGES, FORMATS } from '../../content/modes.js';
 import { STYLES } from '../../content/styles.js';
+import { visualStyleOptions } from '../../content/stylebible/index.js';
 import { logoPath } from '../../content/branding.js';
 
 export const metaRouter = Router();
@@ -17,6 +18,7 @@ metaRouter.get('/options', (req, res) => {
     })),
     languages: LANGUAGES,
     styles: Object.values(STYLES).map((s) => ({ id: s.id, name: s.name, description: s.description })),
+    visualStyles: visualStyleOptions(),
     formats: FORMATS,
   });
 });

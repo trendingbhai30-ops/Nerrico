@@ -1,17 +1,22 @@
 import { askClaudeJson } from '../providers/claude.js';
 import { scenesPrompt, shotsPrompt } from '../content/prompts.js';
 import { getStyleDef } from '../content/styles.js';
+import { resolveVisualStyle } from '../content/stylebible/index.js';
 import { motionRegistry, resolveMotion } from '../../remotion/motion/index.js';
 
 /**
  * Ask Claude to plan scenes, then validate/repair the result.
  * Retries once with the validation error appended to the prompt.
+ *
+ * `visualStyle` is the project's Style Bible choice — resolved through
+ * resolveVisualStyle so an unknown/legacy/future value degrades to the render
+ * style's default definition, never to a crash.
  */
-export function planScenes({ title, script, words, style = 'vox' }) {
+export function planScenes({ title, script, words, style = 'vox', visualStyle = null }) {
   const styleDef = getStyleDef(style);
   const cinematic = style === 'cinematic';
   const prompt = cinematic
-    ? shotsPrompt({ title, script, words })
+    ? shotsPrompt({ title, script, words, visual: resolveVisualStyle(visualStyle, style) })
     : scenesPrompt({ title, script, words, style });
   return askClaudeJson(
     prompt,

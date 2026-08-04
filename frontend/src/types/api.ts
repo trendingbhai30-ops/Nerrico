@@ -13,6 +13,8 @@ export type ProjectStatus =
 export type ContentModeId = 'normal' | 'realestate';
 export type Language = 'english' | 'hinglish' | 'hindi';
 export type StyleId = 'vox' | 'luxury' | 'cinematic';
+/** Style Bible look ids — populate pickers from /api/options → visualStyles, do not hardcode. */
+export type VisualStyleId = string;
 export type ProjectFormat = 'reel' | 'carousel';
 export type SlideRole = 'hook' | 'content' | 'cta';
 
@@ -36,6 +38,7 @@ export interface Project {
   mode?: ContentModeId;
   language?: Language;
   style?: StyleId;
+  visualStyle?: VisualStyleId;
   format?: ProjectFormat;
   script?: string | null;
   slides?: Slide[] | null;
@@ -69,10 +72,19 @@ export interface StyleOption {
   description: string;
 }
 
+export interface VisualStyleOption {
+  id: VisualStyleId;
+  name: string;
+  description: string;
+  /** The render style this look belongs to — filter the picker by the selected style. */
+  renderStyle: StyleId;
+}
+
 export interface OptionsResponse {
   modes: ContentModeOption[];
   languages: Language[];
   styles: StyleOption[];
+  visualStyles: VisualStyleOption[];
   formats: ProjectFormat[];
 }
 
@@ -96,6 +108,7 @@ export interface CreateProjectPayload {
   mode?: ContentModeId;
   language?: Language;
   style?: StyleId;
+  visualStyle?: VisualStyleId;
   format?: ProjectFormat;
 }
 

@@ -1,6 +1,6 @@
 import { MODES, getMode } from './modes.js';
 import { getStyleDef } from './styles.js';
-import { motionRegistry, resolveMotion } from '../../remotion/motion/index.js';
+import { motionRegistry } from '../../remotion/motion/index.js';
 
 // Language blocks are inserted into script/carousel prompts. English adds nothing
 // (the mode's audience string already says "English").
@@ -112,88 +112,59 @@ OUTPUT (strict): ONLY a JSON object, no markdown fences, no commentary:
 {"scenes":[{"type":"headline","start":0,"end":8,"emphasis":["wrong"],"scheme":0}, {"type":"stat","start":9,"end":15,"value":"90%","label":"of all cargo",${styleDef.useIcons ? '"icon":"📦",' : ''}"scheme":2}, ...]}`;
 }
 
-// Camera-move presets the planner may emit: registered presets that resolve to
-// an IMPLEMENTED camera kind. Sourced from the Motion Registry so the prompt
-// vocabulary grows automatically as Phase 2C implements more kinds — and the
-// planner is never offered a preset that would degrade to a static shot.
-function cameraPresetLegend() {
-  return motionRegistry
-    .list('preset')
-    .map((name) => ({ name, resolved: resolveMotion(name), description: motionRegistry.get('preset', name).description }))
-    .filter(({ resolved }) => resolved.category === 'camera' && resolved.def?.status === 'implemented')
-    .map(({ name, description }) => `"${name}" (${description})`)
-    .join(', ');
+// Legend entry for a motion name that may be a KIND of the given category or a
+// PRESET — exactly the two shapes the Style Bible schema allows in a style's
+// motion preferences (all validated implemented at registration).
+function motionLegendEntry(category, name) {
+  const def = motionRegistry.get(category, name) || motionRegistry.get('preset', name);
+  return def ? `"${name}" (${def.description})` : `"${name}"`;
 }
 
-// Same idea for transitions/effects: only implemented kinds are offered.
-function implementedLegend(category) {
-  return motionRegistry
-    .list(category)
-    .map((name) => motionRegistry.get(category, name))
-    .filter((def) => def.status === 'implemented')
-    .map((def) => `"${def.name}" (${def.description})`)
-    .join(', ');
-}
-
-// The "transition" field also accepts transition-category presets (heroReveal)
-// once their kind is implemented — validated by transitionOrNull in
-// src/core/scenes.js and resolved as preset shorthand in Short.jsx.
-function transitionLegend() {
-  const presets = motionRegistry
-    .list('preset')
-    .map((name) => ({ name, resolved: resolveMotion(name), description: motionRegistry.get('preset', name).description }))
-    .filter(({ resolved }) => resolved.category === 'transition' && resolved.def?.status === 'implemented')
-    .map(({ name, description }) => `"${name}" (${description})`)
-    .join(', ');
-  return [implementedLegend('transition'), presets].filter(Boolean).join(', ');
-}
-
-// The "effect" field likewise accepts effect-category presets (dust, embers,
-// snow) once their kind is implemented — validated by effectOrNull in
-// src/core/scenes.js and resolved as preset shorthand in Short.jsx.
-function effectLegend() {
-  const presets = motionRegistry
-    .list('preset')
-    .map((name) => ({ name, resolved: resolveMotion(name), description: motionRegistry.get('preset', name).description }))
-    .filter(({ resolved }) => resolved.category === 'effect' && resolved.def?.status === 'implemented')
-    .map(({ name, description }) => `"${name}" (${description})`)
-    .join(', ');
-  return [implementedLegend('effect'), presets].filter(Boolean).join(', ');
-}
-
-// Motion Engine bullets for shotsPrompt. Every value the planner emits from
-// these is validated against the Motion Registry in src/core/scenes.js —
+// Motion Engine bullets for shotsPrompt, narrowed to the STYLE'S preferences:
+// the planner is offered only the moves the Style Bible author chose for this
+// look, with the style's own frequency guidance. Every value the planner emits
+// is still validated against the full Motion Registry in src/core/scenes.js —
 // unknown names are stripped there, and the engine degrades gracefully anyway.
-function motionFieldLines() {
-  const lines = [];
-  const presets = cameraPresetLegend();
-  if (presets) {
+function motionFieldLines(visual) {
+  const m = visual.motion;
+  const lines = [
+    `- "motion": the camera move as a named preset — PREFERRED over "camera". This style's moves: ${m.cameraPresets
+      .map((p) => motionLegendEntry('camera', p))
+      .join(', ')}. Camera behaviour: ${visual.cameraBehaviour} Vary it across shots; still fill in "camera" as the fallback.`,
+  ];
+  if (m.transitions.length) {
     lines.push(
-      `- "motion": the camera move as a named preset — PREFERRED over "camera". One of: ${presets}. Match it to the shot's mood and vary it across shots; still fill in "camera" as the fallback.`
+      `- "transition": optional entrance for the shot. One of: ${m.transitions
+        .map((t) => motionLegendEntry('transition', t))
+        .join(', ')}. Frequency: ${m.transitionFrequency}. Omit the field for a straight cut.`
     );
   }
-  const transitions = transitionLegend();
-  if (transitions) {
+  if (m.effects.length) {
     lines.push(
-      `- "transition": optional entrance for the shot. One of: ${transitions}. Use on roughly 1 in 3 shots where a softer entrance helps; omit the field for a straight cut.`
-    );
-  }
-  const effects = effectLegend();
-  if (effects) {
-    lines.push(
-      `- "effect": optional full-frame overlay. One of: ${effects}. The style already grades every shot — add this ONLY when a shot needs extra texture (archival flashback, decay). Omit otherwise.`
+      `- "effect": optional full-frame overlay. One of: ${m.effects
+        .map((e) => motionLegendEntry('effect', e))
+        .join(', ')}. Frequency: ${m.effectFrequency}. Omit otherwise.`
     );
   }
   return lines.join('\n');
 }
 
-// Cinematic style: instead of typographic scenes, plan a shot list where every
-// shot is an AI-generated documentary still + camera move + sparse caption.
-export function shotsPrompt({ title, script, words }) {
+// Cinematic render style: instead of typographic scenes, plan a shot list where
+// every shot is an AI-generated still + camera move + sparse caption.
+//
+// The prompt is composed ENTIRELY from a Style Bible definition (`visual`) —
+// this function owns the scaffolding (word indices, JSON contract, coverage
+// rules) and the definition owns every word of visual language. The planner
+// never invents a look; changing the look means changing the definition.
+export function shotsPrompt({ title, script, words, visual }) {
   const wordList = words.map((w, i) => `${i}:${w.word}`).join(' ');
-  return `You are the director of a cinematic documentary vertical Reel (1080x1920) in the style of premium story-driven channels: AI-generated photorealistic stills, slow camera moves, dark moody grade, sparse elegant serif captions.
+  const v = visual;
+  return `You are the director of a "${v.displayName}" vertical Reel (1080x1920): ${v.description}.
 
-The voiceover is already recorded. Your job: split it into SHOTS. Each shot shows one full-screen cinematic image while its words are spoken. The viewer must understand the story with the sound OFF — the images carry the story, captions only punctuate it.
+STYLE PHILOSOPHY:
+${v.philosophy}
+
+The voiceover is already recorded. Your job: split it into SHOTS. Each shot shows one full-screen image while its words are spoken. The viewer must understand the story with the sound OFF — the images carry the story, captions only punctuate it.
 
 TITLE: ${title}
 
@@ -203,24 +174,39 @@ ${script}
 WORDS (index:word — shots reference these indices):
 ${wordList}
 
+COMPOSITION (every shot):
+${v.composition.map((r) => `- ${r}`).join('\n')}
+
+FRAMING:
+${v.framing.map((r) => `- ${r}`).join('\n')}
+
+LIGHT & COLOR:
+- Palette: ${v.colorPalette.description}. Tones: ${v.colorPalette.tones.join('; ')}. Accent: ${v.colorPalette.accent}.
+${v.lighting.map((r) => `- ${r}`).join('\n')}
+
 For each shot provide:
 - "start"/"end": word indices (first shot starts at 0, last ends at ${words.length - 1}, no gaps, no overlaps).
-- "imagePrompt": a vivid ENGLISH description of ONE photorealistic cinematic image for an AI image generator. Describe: the main subject, the setting, the composition (close-up / wide / low angle...), the lighting and mood. Concrete and visual — a film still, not a diagram. NEVER ask for text, words, numbers, logos, or UI inside the image. Vertical composition.
+- "imagePrompt": a vivid ENGLISH description of ONE image for an AI image generator — a ${v.imagePrompt.medium}.
+${v.imagePrompt.rules.map((r) => `  * ${r}`).join('\n')}
+  * NEVER ask for: ${v.forbidden.join('; ')}.
+  * Subjects that fit this style (write your own in this spirit): ${v.imagePrompt.vocabulary.map((x) => `"${x}"`).join(', ')}.
 - "query": a 2-4 word ENGLISH stock-photo search phrase for the same idea, using GENERIC visual concepts a stock site actually has ("empty video store", "man laughing office", "city skyline night") — never proper names of people or brands.
 - "icons": 1-3 emoji that symbolize the shot (e.g. ["📼","💀"] for a dying video-rental giant) — used to build an illustrated fallback scene if no photo is available.
-- "caption": 0-6 words shown in elegant serif over the image ("In 2000", "closed 1000 stores"). Punchy fragments, not sentences. Give a caption to roughly 2 of every 3 shots; leave it "" when the image speaks for itself.
+- "caption": 0-6 words shown over the image (${v.typography.captionStyle}).
+${v.typography.rules.map((r) => `  * ${r}`).join('\n')}
 - "emphasis": 0-2 exact caption words to tint in the accent color.
 - "camera": one of "zoomIn", "zoomOut", "panLeft", "panRight" — vary it, never the same twice in a row. "zoomIn" for drama/tension, "zoomOut" for reveals, pans for places and passage of time.
-${motionFieldLines()}
+${motionFieldLines(v)}
+
+CONSISTENCY (non-negotiable — this is one film, not sixteen images):
+${v.consistency.rules.map((r) => `- ${r}`).join('\n')}
 
 RULES:
-- 10 to 16 shots covering ALL words. Each shot covers roughly 5-14 words (2-5 seconds). Short shots = fast pacing = retention.
-- Tell one visual story: characters and places should RECUR across shots (same protagonist described consistently, e.g. "the same middle-aged businessman in a dark suit").
-- Think like the reference channels: dramatic portraits, symbolic objects (vintage newspapers, keys, stacks of cash, empty stores), city skylines, close-ups of hands/faces. Metaphors welcome (a sinking paper boat for a failing company).
+- 10 to 16 shots covering ALL words. Each shot covers roughly 5-14 words (2-5 seconds). Overall pace of this style: ${v.motion.pace}.
 - The hook (shot 1) must be the most arresting image of all.
 
 OUTPUT (strict): ONLY a JSON object, no markdown fences, no commentary:
-{"shots":[{"start":0,"end":9,"imagePrompt":"low angle close-up of a weathered businessman...","query":"businessman dark office","icons":["💼"],"caption":"In 2000","emphasis":["2000"],"camera":"zoomIn","motion":"slowZoom","transition":"fade"}, ...]}`;
+{"shots":[{"start":0,"end":9,"imagePrompt":"...","query":"businessman dark office","icons":["💼"],"caption":"In 2000","emphasis":["2000"],"camera":"zoomIn","motion":"${v.motion.cameraPresets[0]}","transition":"${v.motion.transitions[0] || 'fade'}"}, ...]}`;
 }
 
 export function carouselPrompt({ title, research, mode = 'normal', language = 'english' }) {

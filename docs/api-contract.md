@@ -5,6 +5,8 @@ All request/response bodies are JSON unless stated. The frontend must treat this
 
 **New in v2**: modes (normal / real-estate), languages (english / hinglish), visual styles (vox / luxury), and a carousel output format (static Instagram slides) alongside video reels.
 
+**New in v2.1 (Phase 3 — Style Bible)**: `visualStyle` — a Style Bible look for the video, independent of the render `style`. Options come from `GET /api/options` → `visualStyles`; each option carries the `renderStyle` it belongs to, so the picker should show the visual styles matching the selected `style` (e.g. the 7 cinematic looks when `style=cinematic`). Optional everywhere: omitted or legacy projects default to the codified look of their render style (`cinematic` → `cinematic`, `vox` → `paper-collage`, `luxury` → `luxury`).
+
 ## Health
 
 `GET /api/health`
@@ -25,6 +27,17 @@ Frontend shows a "backend offline" banner whenever this fails.
   "styles": [
     {"id": "vox", "name": "Vox Paper", "description": "..."},
     {"id": "luxury", "name": "Luxury Minimal", "description": "..."}
+  ],
+  "visualStyles": [
+    {"id": "cinematic", "name": "Cinematic Documentary", "description": "...", "renderStyle": "cinematic"},
+    {"id": "paper-collage", "name": "Paper Collage", "description": "...", "renderStyle": "vox"},
+    {"id": "luxury", "name": "Luxury Minimal", "description": "...", "renderStyle": "luxury"},
+    {"id": "documentary", "name": "Documentary Realism", "description": "...", "renderStyle": "cinematic"},
+    {"id": "ai-documentary", "name": "AI Documentary", "description": "...", "renderStyle": "cinematic"},
+    {"id": "history", "name": "History Archive", "description": "...", "renderStyle": "cinematic"},
+    {"id": "finance", "name": "Finance Noir", "description": "...", "renderStyle": "cinematic"},
+    {"id": "modern-tech", "name": "Modern Tech", "description": "...", "renderStyle": "cinematic"},
+    {"id": "minimal", "name": "Minimal Gallery", "description": "...", "renderStyle": "cinematic"}
   ],
   "formats": ["reel", "carousel"]
 }
@@ -50,6 +63,7 @@ Body:
   "mode": "normal | realestate (default normal)",
   "language": "english | hinglish (default english)",
   "style": "vox | luxury (default vox)",
+  "visualStyle": "a visualStyles id from /api/options (optional; defaults to the render style's own look; 400 on unknown ids)",
   "format": "reel | carousel (default reel)"
 }
 ```
@@ -71,6 +85,7 @@ Body:
   "mode": "normal | realestate",
   "language": "english | hinglish",
   "style": "vox | luxury",
+  "visualStyle": "a visualStyles id (always present; legacy projects report their render style's default)",
   "format": "reel | carousel",
   "script": "string | null (reels only)",
   "slides": "null | [{\"role\": \"hook | content | cta\", \"heading\": \"string\", \"body\": \"string\"}] (carousels only)",

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { defaultVisualStyle } from '../content/stylebible/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const DATA_DIR = path.join(__dirname, '..', '..', 'data', 'projects');
@@ -16,7 +17,7 @@ function projectFile(id) {
   return path.join(projectDir(id), 'project.json');
 }
 
-export function createProject({ title, research, voiceId, mode, language, style, format }) {
+export function createProject({ title, research, voiceId, mode, language, style, format, visualStyle }) {
   const id = crypto.randomBytes(6).toString('hex');
   const project = {
     id,
@@ -26,6 +27,7 @@ export function createProject({ title, research, voiceId, mode, language, style,
     mode: mode || 'normal',
     language: language || 'english',
     style: style || 'vox',
+    visualStyle: visualStyle || defaultVisualStyle(style || 'vox'),
     format: format || 'reel',
     status: 'created',
     script: null,
@@ -48,6 +50,7 @@ export function getProject(id) {
   project.mode ||= 'normal';
   project.language ||= 'english';
   project.style ||= 'vox';
+  project.visualStyle ||= defaultVisualStyle(project.style); // pre-Style-Bible projects
   project.format ||= 'reel';
   project.slides ??= null;
   return project;
