@@ -25,9 +25,14 @@ Nerrico/
 ├── docs/
 │   ├── api-contract.md      ← backend API contract (source of truth for endpoints)
 │   ├── motion-engine.md     ← Nerrico Motion Engine (NME) architecture reference
+│   ├── style-bible.md       ← Style Bible (visual style registry) architecture reference
+│   ├── asset-engine.md      ← Asset Engine architecture reference
 │   ├── scriptwriting-principles.md
 │   └── antigravity-prompt.md
-├── assets/                  ← voice samples etc.
+├── assets/                  ← local asset library (Asset Engine reads in place):
+│   ├── music/               ←   6 background tracks + tags.json sidecar
+│   ├── sfx/                 ←   26 sound effects + tags.json sidecar
+│   └── icons/               ←   Tabler Icons (MIT): outline/ + filled/ + aliases.json
 ├── backend/                 ← Node/Express + Remotion (plain JS)
 │   ├── package.json         ← `npm start` runs src/server.js (port 4000)
 │   ├── .env                 ← ELEVENLABS_API_KEY (restricted); GEMINI_API_KEY commented out
@@ -42,6 +47,9 @@ Nerrico/
 │   │   ├── content/         ← modes.js, styles.js, voices.js, prompts.js, branding.js,
 │   │   │   └── stylebible/  ←   Style Bible: registry.js, schema.js, styles/ (one file
 │   │   │                        per look), index.js (see docs/style-bible.md)
+│   │   ├── assets/          ← Asset Engine: schema.js, registry.js, cache.js, importer.js,
+│   │   │                        search.js, resolver.js, validate.js, integration.js,
+│   │   │                        paths.js, index.js (see docs/asset-engine.md)
 │   │   ├── core/            ← store.js, pipeline.js, scenes.js, slides.js, render.js
 │   │   └── api/             ← app.js, middleware.js, routes/{meta,voices,projects}.js
 │   ├── remotion/            ← compositions: Short.jsx, Slide.jsx, scenes.jsx,
@@ -51,7 +59,8 @@ Nerrico/
 │   │                            (see docs/motion-engine.md)
 │   └── scripts/             ← preview-frames.js, preview-frames-branded.js, test-slides.js,
 │                              test-browser.js, test-render.js, test-motion.js,
-│                              test-stylebible.js, render-motion-demo.js (diagnostics)
+│                              test-stylebible.js, test-assets.js, demo-assets.js,
+│                              render-motion-demo.js (diagnostics)
 └── frontend/                ← Vite + React + TypeScript (USER'S domain — Antigravity)
     └── src/                 ← config/constants.ts, utils/, full API types, zero `any`
 ```
@@ -68,6 +77,7 @@ Nerrico/
 - **Prompts** live in `src/content/prompts.js`. When refactoring, keep prompts byte-identical unless the change is deliberately about prompt quality.
 - **Motion (NME)**: new motions are one `motionRegistry.register()` call in the right category module (`remotion/motion/{camera,transitions,effects}/index.js`) + an `apply(t, motion)` function; presets are config-only in `presets/index.js`. Only `hooks.js` may import React/Remotion — everything else stays Node-testable. Run `node scripts/test-motion.js` after any `motion/` change. Full architecture: `docs/motion-engine.md`.
 - **Visual styles (Style Bible)**: new looks are one definition file in `src/content/stylebible/styles/` + an import line in its `index.js` — registration validates the definition at import time (motion preferences must be implemented registry entries; forbidden terms must not appear in the style's own prompt vocabulary). Never compose AI image prompts ad-hoc — go through `composeImagePrompt`. Run `node scripts/test-stylebible.js` after any `stylebible/` change. Full architecture: `docs/style-bible.md`.
+- **Assets (Asset Engine)**: consumers NEVER build asset file paths or read the `assets/` tree themselves — resolve semantic ids (`sfx.paper.rip`, `music.documentary.calm`, `icon.money`) through `src/assets/index.js` (`resolveAsset`, `resolveAssetPath`, or the integration seams in `integration.js`). Adding an asset = drop a supported file into the right `Nerrico/assets/` folder (optionally curate via `tags.json`); adding a category = one entry in `ASSET_CATEGORIES` (schema.js). Registry must be populated via `initAssetEngine()` (explicit, awaited — not an import side effect). Run `node scripts/test-assets.js` after any `src/assets/` change. Full architecture: `docs/asset-engine.md`.
 - **Frontend API base**: `VITE_API_BASE_URL`, but a localStorage override wins. Keep both working.
 
 ## Architecture Principles
@@ -98,7 +108,7 @@ The project advances in explicit, user-approved phases:
 - **Windows + Remotion ffmpeg**: `%03d` output patterns fail; extract single frames with `-ss` in a loop.
 - **Verify visual changes by looking at frames** (`scripts/preview-frames.js`, or `preview-frames-branded.js` for styles/branding — it passes style + branding like the real pipeline). Never declare a visual feature done from code alone.
 - **ElevenLabs free tier**: only 3 premade voices work (George/Sarah/Adam — IDs in `src/content/voices.js`); library voices return 402. Hinglish currently uses Adam + `eleven_multilingual_v2`. Voice IDs are configurable, never hardcoded in compositions.
-- **Skip SFX/background music** unless the user asks — explicitly deprioritized twice.
+- **SFX/background music**: the user has now provided a local library (registered by the Asset Engine, Phase 4A) — but nothing plays audio in renders yet; audio layers arrive with Phase 4C. Don't wire sound into compositions before that phase is approved.
 - **Kastoori business facts** (channel partner, Chandkheda & Zundal Ahmedabad, no brokerage) are context for the LLM only — NEVER pitched in scripts. Branding is visual (logo chip, wordmark, end-card CTA).
 - **Don't touch `remotion/` casually** — compositions are frame-verified; changes there require re-verification.
 - **Back up before big refactors** (tar.gz at repo root, like `nerrico-pre-phase1-backup.tgz`) — this is not a git repo (yet).

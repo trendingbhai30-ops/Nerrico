@@ -1,11 +1,11 @@
 # PROJECT_STATUS.md
 
 > Snapshot of where Nerrico stands right now. Update this file at the end of every phase.
-> Last updated: **2026-08-04** (after Phase 3 — Style Bible)
+> Last updated: **2026-08-04** (after Phase 4A — Asset Engine Foundation)
 
 ## Current Phase
 
-**Phase 3 (Style Bible) is COMPLETE and validated (NOT yet committed — working tree changes awaiting user approval).** The planner's visual language now lives in a registry of validated style definitions (`backend/src/content/stylebible/`, 9 active + 2 future looks), projects carry a `visualStyle`, the API exposes and validates it, and every AI image request is composed through the deterministic consistency system. Architecture doc: `docs/style-bible.md`. Next phase per the README roadmap: **Phase 4 — Asset Engine**. Do not start it without user approval.
+**Phase 4A (Asset Engine Foundation) is COMPLETE and validated (NOT yet committed — working tree changes awaiting user approval; Phase 3 was committed as `1df536c`).** Every local music track, SFX, and icon is now a validated, frozen `AssetRecord` in a searchable registry (`backend/src/assets/`), resolved by semantic id (`sfx.paper.rip`, `music.documentary.calm`, `icon.money`) — never by file path. Library: `Nerrico/assets/` (6 music + 26 sfx + 6,184 Tabler icons = 6,216 assets). Purely additive — nothing consumes assets in production yet; the integration seams for Motion/Style Bible/planner/render are interfaces awaiting Phase 4C. Architecture doc: `docs/asset-engine.md`. Next: **Phase 4B — asset providers/downloading**, then **4C — asset intelligence**. Do not start without user approval.
 
 ## Completed Work
 
@@ -87,11 +87,21 @@
 - **Smoke test**: `scripts/test-stylebible.js` — 71 pure-Node checks (registry, schema accept/reject, per-style implemented-motion re-verification, resolution fallbacks, options shape, prompt composition per active style).
 - **Validated**: Style Bible smoke 71/71, motion smoke 159/159, pipeline test 17/17, baseline pixel-compare max delta 8/255, fresh server + all endpoints healthy (options, create-time 400s, explicit/default/legacy-backfill projects verified live), full re-render of `d2fe791fdb84` RENDER OK, frontend `tsc` + `vite build` clean, oxlint 1 pre-existing warning only.
 
+### Phase 4A — Asset Engine Foundation (2026-08-04)
+
+- **Asset Engine** built at `backend/src/assets/` — the local asset foundation, mirroring Motion Registry / Style Bible semantics (duplicate ids throw, unknown lookups → `null`, records deep-frozen). Full architecture doc: `docs/asset-engine.md`.
+- **Local asset library** at `Nerrico/assets/` (user-provided, read in place, never moved): `music/` 6 tracks (.webm), `sfx/` 26 effects (.mp3), `icons/` Tabler Icons MIT (outline + filled, 6,184 SVGs). Optional sidecars: per-category `tags.json` curation, Tabler `aliases.json` (aliases become search keywords).
+- **Module**: `schema.js` (AssetRecord + category table — future categories are one entry), `registry.js`, `paths.js` (the one record→file bridge), `cache.js`, `importer.js` (junk-stripping slugs, sha1 hashes, real audio durations via `@remotion/media-parser`, SVG dims + Tabler comment tags, per-category duplicate-content skip), `search.js` (deterministic ranked, AND-semantics), `resolver.js` (exact → semantic → relaxation → fallback → null), `validate.js` (registry+disk health), `integration.js` (seams), `index.js` (public API; explicit awaited `initAssetEngine()`).
+- **Integration seams (interfaces only by design)**: `requestAsset`, `sfxForMotion`, `assetForStyle`, `assetForPlanner`, `plannerAssetVocabulary`, `assetPathForRender`. Nothing calls them in production — Motion Engine, Style Bible, planner, pipeline, and all compositions untouched. Server (`src/server.js`) calls `initAssetEngine()` at startup, non-blocking, failure never fatal.
+- **Cache**: `backend/data/asset-cache.json` (gitignored) — expensive metadata (hash/duration/dimensions/timestamps) keyed by path, invalidated on size/mtime change; warm full-library import ≪ 1 s.
+- **Demo + smoke test**: `scripts/demo-assets.js` (real-library tour, health report clean) and `scripts/test-assets.js` (**71 checks**: synthetic fixture tree for importer/registry/schema/cache/search/resolver/duplicate-prevention/validation + real-library sanity).
+- **Validated**: asset smoke 71/71, motion smoke 159/159, Style Bible smoke 71/71, pipeline test 17/17, fresh server boots + imports 6,216 assets + all endpoints healthy, frontend `tsc` + `vite build` clean, oxlint 1 pre-existing warning only.
+
 ## Pending Phases
 
-- Roadmap after Phase 2 (user-defined, see README): 3 Style Bible, 4 Asset Engine, 5 Voice Engine, 6 Caption Engine, 7 UI, 8 Authentication & Firebase, 9 YouTube Upload, 10 Public Launch.
+- Roadmap after Phase 2 (user-defined, see README): 3 Style Bible ✅, 4 Asset Engine (4A foundation ✅ → 4B providers/downloading → 4C asset intelligence), 5 Voice Engine, 6 Caption Engine, 7 UI, 8 Authentication & Firebase, 9 YouTube Upload, 10 Public Launch.
 - Backlog candidates (user-acknowledged, not scheduled):
-  - Background music + SFX (deprioritized twice by user; skip unless asked).
+  - Background music + SFX **in renders** (the local files are now registered by the Asset Engine; actually playing them in videos is Phase 4C).
   - User accent-check of Adam speaking Hinglish (project `c54ed751b120`).
   - Free-tier-usable Hindi-sounding premade ElevenLabs voice.
   - Pexels/Pixabay free API keys for better stock photos.
@@ -108,6 +118,7 @@
   - `utils/` — logger (scopes + LOG_LEVEL), `errors.js` (HttpError), `json.js` (extractJson), `download.js`
   - `providers/` — `claude.js` (spawned `claude -p`, incl. `askClaudeJson` retry helper), `elevenlabs.js`, `images/` (one file per provider + `index.js` registry), `stock.js`, `commons.js`
   - `content/` — `modes.js`, `styles.js`, `voices.js`, `prompts.js`, `branding.js`, `stylebible/` (visual style registry + schema + definitions; see `docs/style-bible.md`)
+  - `assets/` — Asset Engine (schema/registry/cache/importer/search/resolver/validate/integration; see `docs/asset-engine.md`); library files live at repo-root `assets/` (music/sfx/icons)
   - `core/` — `store.js`, `pipeline.js`, `scenes.js`, `slides.js`, `render.js`
   - `api/` — `app.js`, `routes/{meta,voices,projects}.js`, `middleware.js`
 - **Rendering**: `backend/remotion/` — `Short.jsx`, `Slide.jsx`, `scenes.jsx`, `styles/{vox,luxury,cinematic}.jsx`, `theme.js`. Untouched by Phase 1.
@@ -132,7 +143,9 @@
 
 - Git repo is local-only (no remote) — `nerrico-pre-phase1-backup.tgz` is the only other backup.
 - Remotion's bundled ffmpeg (the only ffmpeg on this machine) has NO `bmp` encoder (minimal `--disable-encoders` build; png/mjpeg/x264 only) and no `rawvideo` muxer — extract frames as `.png` only; for pixel comparisons use `pngjs` from backend node_modules.
-- No SFX/background music (intentionally skipped per user).
+- No SFX/background music **in renders yet** — the Asset Engine (4A) registers the user's local music/sfx/icons, but nothing plays them; audio/icon layers land with asset intelligence (Phase 4C).
+- Music/SFX licenses are recorded as `unknown` (files are YouTube/download-site rips; several are copyrighted tracks — e.g. Tyler, The Creator instrumental, Blade Runner 2049 fanmade). Fine for local testing; **must be reviewed before anything is published to YouTube**. Icons are MIT (Tabler).
+- `Nerrico/assets/` (≈34 MB: 15 MB icons + 17 MB music + 1.6 MB sfx) is currently untracked — decide at commit time whether the library belongs in git.
 - Kastoori logo (`backend/config/kastoori-logo.png`) has a dark background, NOT transparent — may look like a dark box on light/cream slides; verify on first branded light render.
 - Pollinations images occasionally contain garbled AI text in signage; actual resolution below 1080x1920 (upscales acceptably).
 - Stale-server hazard: after editing `src/` files, the long-running server must be restarted — a stale process has twice caused "Unknown style" / old-code failures, and once a persistent Remotion "Failed to launch the browser process!" (fix: kill server, restart, retry). Diagnostic scripts: `backend/scripts/test-browser.js`, `test-render.js`.
@@ -143,4 +156,4 @@
 
 ## Next Planned Phase
 
-**Phase 4 — Asset Engine** (per the user's README roadmap). Phase 3 (Style Bible) is complete and validated but NOT yet committed — the working tree holds the Phase 3 changes; commit needs user approval. Note: the long-running backend server caches its Remotion bundle per process — restart it after `src/` or `motion/` changes (freshly restarted during Phase 3 validation). Do not start Phase 4 without user approval. Frontend follow-up owned by the user: a `visualStyle` picker populated from `/api/options` → `visualStyles`, filtered by the selected render style.
+**Phase 4B — Asset Providers/Downloading**, then **Phase 4C — Asset Intelligence** (style-aware selection, motion-kind→SFX mapping, planner asset vocabulary, actual audio/icon layers in renders). Phase 4A (Asset Engine Foundation) is complete and validated but NOT yet committed — the working tree holds the Phase 4A changes; commit needs user approval (and a decision on whether the ~34 MB `assets/` library goes into git). Note: the long-running backend server caches its Remotion bundle per process — restart it after `src/` or `motion/` changes. Do not start Phase 4B without user approval. Frontend follow-up owned by the user: a `visualStyle` picker populated from `/api/options` → `visualStyles`, filtered by the selected render style.

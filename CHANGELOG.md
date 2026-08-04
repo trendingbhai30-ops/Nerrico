@@ -4,6 +4,30 @@ All completed phases and major architectural changes, newest first. Add an entry
 
 ---
 
+## 2026-08-04 — Phase 4A: Asset Engine Foundation ✅
+
+The local asset foundation: every music track, sound effect, and icon the pipeline may
+ever use is now a validated, deep-frozen `AssetRecord` in a searchable registry —
+resolved by semantic id, never by file path. Mirrors the Motion Registry / Style Bible
+semantics exactly (duplicate ids throw, unknown lookups return `null`). **Purely
+additive: nothing calls the engine in production yet** — Motion Engine, Style Bible,
+planner, and render pipeline are untouched. Architecture doc: `docs/asset-engine.md`.
+(Work spanned two sessions — an API-limit interruption left the full module, scripts,
+and server wiring done; the second session recovered from git status and ran the
+validation + docs.)
+
+- **Local asset library** at `Nerrico/assets/` (files read in place, never moved): `music/` (6 background tracks, .webm), `sfx/` (26 sound effects, .mp3), `icons/` (Tabler Icons, MIT — outline + filled, 6,184 SVGs) + optional curation sidecars (`tags.json`, Tabler's `aliases.json`).
+- **Module** (`backend/src/assets/`): `schema.js` (AssetRecord shape + the category table — a future category like fonts is ONE entry), `registry.js` (factory + singleton, validate → freeze → store), `paths.js` (the one record→file bridge), `cache.js` + `importer.js` (see below), `search.js` (deterministic ranked search: AND-semantics, exact > prefix > substring, name > tags > keywords, stable id tie-break), `resolver.js` (exact id → category+terms → leading-term relaxation → global fallback → null, never throws), `validate.js` (registry+disk health check), `integration.js`, `index.js` (public API; explicit awaited `initAssetEngine()`, not an import side effect).
+- **Importer**: scans the category folders deterministically, strips download-site junk from names (`slugify`: "vidssave.com Foo 256kbps (1)" → "foo"), sha1-hashes content, reads real audio durations via `@remotion/media-parser` (now a declared dependency), parses SVG dimensions + Tabler's `tags:`/`category:` comments, merges sidecar curation, **skips duplicate content per category** with a note, ignores + counts unsupported files. Icon variants encode into ids: `icon.coin` (outline default) vs `icon.coin.filled`.
+- **Cache** (`backend/data/asset-cache.json`, gitignored): expensive metadata (hash/duration/dimensions/timestamps) reused when size+mtime match; cheap metadata re-derived every import so sidecar edits always apply; corrupted cache → rebuild + warning, never fatal. Warm full-library import ≪ 1 s.
+- **Integration seams** (`integration.js`, interfaces only by design): `requestAsset`, `sfxForMotion` ("paperReveal" → paper-rip SFX), `assetForStyle` (style-aware selection is 4C), `assetForPlanner` + `plannerAssetVocabulary` (registry-sourced legend material, like the Motion Engine's), `assetPathForRender`. Future intelligence lands in one place per subsystem without touching callers.
+- **Server startup** (`src/server.js`, only tracked-file change): `initAssetEngine()` after listen — non-blocking, failure logged but never fatal.
+- **Demo** `scripts/demo-assets.js`: human-readable tour of the real library — import, registry stats, ranked searches, semantic resolutions (`music.documentary.calm`, `sfx.paper.rip`, `icon.money`, …), seams, health report.
+- **Smoke test** `scripts/test-assets.js` (**71 checks**, pure Node): synthetic fixture tree exercises importer (junk stripping, sidecars, variants, aliases), registry contracts, schema accept/reject, cache (warm reuse, change detection, createdAt/updatedAt semantics, corruption recovery), search ranking/filters/determinism, resolver fallbacks, duplicate prevention, and validation; then the REAL library (6 music + 26 sfx + 6,184 icons = 6,216 assets) is imported and sanity-checked.
+- **Validated**: asset smoke **71/71**, asset demo clean (library healthy: 0 errors/warnings), motion smoke 159/159, Style Bible smoke 71/71, pipeline test 17/17, fresh server boots + imports 6,216 assets + all endpoints healthy, frontend `tsc` + `vite build` clean, oxlint 1 pre-existing warning only.
+
+---
+
 ## 2026-08-04 — Phase 3: Style Bible ✅
 
 The planner's visual language is no longer hardcoded prose — it's a registry of validated, frozen **visual style definitions** (`backend/src/content/stylebible/`), the visual-intelligence counterpart of the Motion Registry. One render style now carries many looks with zero composition changes. Architecture doc: `docs/style-bible.md`. (Work spanned two sessions — an API-limit interruption left the full module + API/storage/planner wiring done; the second session recovered from git status and added the smoke test, validation, and docs.)

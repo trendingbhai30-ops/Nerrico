@@ -18,6 +18,7 @@ Built around a timestamp-driven pipeline: AI-generated narration with word-level
 | **Project Management** | ✅ Available | Every video is a project with reviewable script, scenes, assets, and retry support |
 | **Style Presets** | ✅ Available | Style Bible: 9 selectable visual looks (documentary, history, finance, modern-tech, and more) as validated, structured style definitions ([architecture](docs/style-bible.md)) |
 | **Motion Graphics** | ✅ Available | Nerrico Motion Engine (NME): style-agnostic registry of camera moves, transitions, and effects — full vocabulary implemented and planner-reachable ([architecture](docs/motion-engine.md)) |
+| **Asset Library** | 🚧 In progress | Asset Engine: local music, SFX, and icons registered as searchable, semantically-addressable assets ([architecture](docs/asset-engine.md)); provider downloads and in-render audio/icon layers coming in later sub-phases |
 | **Caption Engine** | 🚧 Planned | Advanced word-synced caption system with per-style typography |
 | **User-provided AI APIs** | 🚧 Planned | Bring your own keys — Gemini, OpenAI, premium ElevenLabs, Pexels/Pixabay — for higher quality and throughput |
 
@@ -54,12 +55,12 @@ Built around a timestamp-driven pipeline: AI-generated narration with word-level
 Nerrico/
 ├── frontend/   # React + Vite + TypeScript web app (project dashboard, script review, video preview)
 ├── backend/    # Express API + video pipeline
-│   ├── src/        # layered source: config / utils / providers / content / core / api
+│   ├── src/        # layered source: config / utils / providers / content / assets / core / api
 │   ├── remotion/   # video compositions and style renderers (vox, luxury, cinematic)
 │   │   └── motion/ # Nerrico Motion Engine (NME): camera, transitions, effects, presets
 │   ├── config/     # branding assets and configuration
 │   └── scripts/    # preview and diagnostic tools
-├── assets/     # shared assets (voice samples, references)
+├── assets/     # local asset library: music/, sfx/, icons/ (managed by the Asset Engine)
 └── docs/       # API contract, scriptwriting principles, and design docs
 ```
 
@@ -89,6 +90,8 @@ Nerrico is developed in **explicit, sequential phases**. Each phase is scoped up
 > ✅ **Phase 2D — Transitions & Effects** complete: all six transitions (slide, whip, flash, paper reveal, morph, fade) and all six effects (film grain, blur, glow, noise, particles, vignette) implemented — the entire declared motion vocabulary is live and planner-reachable. **Phase 2 (Motion Engine) is complete.**
 >
 > ✅ **Phase 3 — Style Bible** complete: a registry of validated visual style definitions — 9 selectable looks across the three render styles, a deterministic image-prompt consistency system, and a shot planner composed entirely from structured style data ([architecture](docs/style-bible.md)).
+>
+> ✅ **Phase 4A — Asset Engine Foundation** complete: the local asset library (music, SFX, Tabler icons) imported into a validated, searchable registry with semantic-id resolution and integration seams for the motion engine, styles, planner, and renderer ([architecture](docs/asset-engine.md)).
 
 **Upcoming phases:**
 
@@ -160,6 +163,9 @@ Additional design docs live in [`docs/`](docs/), including the backend API contr
   - [x] Phase 2D — Remaining transitions & effects (TransitionShell + MotionEffect renderers, TransitionDemo + EffectsDemo)
 - [x] Phase 3 — Style Bible (visual style registry, 9 selectable looks, prompt consistency system)
 - [ ] Phase 4 — Asset Engine
+  - [x] Phase 4A — Asset Engine foundation (schema, registry, importer + cache, search, resolver, integration seams)
+  - [ ] Phase 4B — Asset providers/downloading
+  - [ ] Phase 4C — Asset intelligence (style-aware selection, motion→SFX mapping, in-render audio/icon layers)
 - [ ] Phase 5 — Voice Engine
 - [ ] Phase 6 — Caption Engine
 - [ ] Phase 7 — UI

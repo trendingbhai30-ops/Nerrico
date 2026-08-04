@@ -1,0 +1,42 @@
+{
+  "//": "Optional curation sidecar for the Asset Engine importer — keyed by exact filename. Files WITHOUT an entry still import fine with metadata derived from their name. Edit freely; takes effect on next import (no cache invalidation needed).",
+  "vidssave.com Caleb Arredondo - Feeling Blue 256kbps.webm": {
+    "name": "feeling-blue",
+    "displayName": "Feeling Blue",
+    "author": "Caleb Arredondo",
+    "tags": ["lofi", "calm", "mellow", "chill", "documentary", "background"],
+    "keywords": ["relaxed", "smooth", "thoughtful"]
+  },
+  "vidssave.com Dramamine 256KBPS.webm": {
+    "name": "dramamine",
+    "displayName": "Dramamine",
+    "tags": ["lofi", "calm", "slow", "ambient", "sad", "documentary", "background"],
+    "keywords": ["melancholy", "dreamy", "soft"]
+  },
+  "vidssave.com Lilac Skies 256KBPS.webm": {
+    "name": "lilac-skies",
+    "displayName": "Lilac Skies",
+    "tags": ["lofi", "dreamy", "calm", "ambient", "background"],
+    "keywords": ["airy", "peaceful", "light"]
+  },
+  "vidssave.com Synthwave Goose - Blade Runner 2049 [NCS Fanmade] 256kbps.webm": {
+    "name": "blade-runner-2049",
+    "displayName": "Blade Runner 2049 (Synthwave)",
+    "author": "Synthwave Goose",
+    "tags": ["synthwave", "dark", "cinematic", "tension", "electronic", "dramatic"],
+    "keywords": ["retro", "futuristic", "intense", "documentary"]
+  },
+  "vidssave.com THANK YOU - INSTRUMENTAL - Tyler, The Creator 256kbps.webm": {
+    "name": "thank-you-instrumental",
+    "displayName": "Thank You (Instrumental)",
+    "author": "Tyler, The Creator",
+    "tags": ["hip-hop", "upbeat", "groovy", "energetic"],
+    "keywords": ["instrumental", "bouncy", "confident"]
+  },
+  "vidssave.com Upbeat Intro music percussion music 256kbps.webm": {
+    "name": "upbeat-percussion-intro",
+    "displayName": "Upbeat Percussion Intro",
+    "tags": ["upbeat", "percussion", "energetic", "intro", "bright"],
+    "keywords": ["drums", "opener", "positive"]
+  }
+}
