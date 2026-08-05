@@ -4,6 +4,7 @@ import { JSON_BODY_LIMIT } from '../config/constants.js';
 import { metaRouter } from './routes/meta.js';
 import { voicesRouter } from './routes/voices.js';
 import { projectsRouter } from './routes/projects.js';
+import { assetsRouter } from './routes/assets.js';
 import { notFound, errorHandler } from './middleware.js';
 
 export function createApp() {
@@ -14,6 +15,7 @@ export function createApp() {
   app.use('/api', metaRouter);
   app.use('/api/voices', voicesRouter);
   app.use('/api/projects', projectsRouter);
+  app.use('/api/assets', assetsRouter);
 
   app.use(notFound);
   app.use(errorHandler);

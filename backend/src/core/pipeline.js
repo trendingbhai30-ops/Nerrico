@@ -14,7 +14,7 @@ import { scriptPrompt } from '../content/prompts.js';
 import { getMode } from '../content/modes.js';
 import { brandingProps } from '../content/branding.js';
 import { resolveVisualStyle, composeImagePrompt } from '../content/stylebible/index.js';
-import { selectMusic } from '../assets/index.js';
+import { selectMusic, buildAssetTimeline } from '../assets/index.js';
 import { planScenes } from './scenes.js';
 import { planSlides } from './slides.js';
 import { renderShort, renderSlides } from './render.js';
@@ -147,6 +147,18 @@ async function stepRender(id) {
       s.src = `http://127.0.0.1:${env.port}/api/projects/${id}/asset/${s.image}`;
     }
   }
+  // Asset Provider (Phase 4C): the render receives resolved asset OBJECTS
+  // (src URLs + timeline fields), never semantic ids or file paths. Legacy
+  // projects without a musicPlan re-derive the same deterministic decision.
+  const assets = buildAssetTimeline({
+    scenes,
+    words,
+    durationSec,
+    style: resolveVisualStyle(p.visualStyle, p.style),
+    musicPlan: p.musicPlan || null,
+    projectMusic: p.music || null,
+    baseUrl: `http://127.0.0.1:${env.port}`,
+  });
   await renderShort({
     inputProps: {
       audioUrl: `http://127.0.0.1:${env.port}/api/projects/${id}/audio`,
@@ -155,6 +167,7 @@ async function stepRender(id) {
       durationSec,
       style: p.style,
       branding: projectBranding(p),
+      assets,
     },
     outMp4: artifactPath(id, ARTIFACTS.video),
     outPng: artifactPath(id, ARTIFACTS.thumbnail),

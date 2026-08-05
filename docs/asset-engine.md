@@ -4,8 +4,12 @@
 > search, resolver, validation, and the integration seams.
 > Phase 4B (2026-08-05): asset intelligence — the engine became an intelligent provider:
 > motion→SFX semantic events, style→asset preferences, the music selection policy, and
-> planner integration (the planner now references semantic ids). Audio/icon layers in the
-> actual render are still a later phase; providers/downloading are also still future.
+> planner integration (the planner now references semantic ids).
+> Phase 4C (2026-08-05): render integration — the Asset Provider turns semantic ids into
+> render-ready objects (src URL + timeline fields), the timeline builder assembles the
+> per-project music/SFX/icon layers, `/api/assets` serves library files, and the Short
+> composition actually PLAYS the music bed and SFX accents. Providers/downloading of new
+> assets are still future.
 
 ## What it is
 
@@ -55,6 +59,8 @@ asset; the next import picks it up.
 | `validate.js` | `validateAssetLibrary()`: post-import health check over registry + disk — errors (missing files, schema violations, stale metadata), warnings (duplicate content, missing durations), info (ignored files). |
 | `intelligence.js` | Phase 4B. The decision layer: `MOTION_SFX_EVENTS` (motion kind → semantic sound event), `STYLE_ASSET_PREFERENCES` (style name → music/sfxLevel/overrides/icon prefs), `selectMusic()` (the music policy chain), and the auto-expanding planner vocabularies. Pure data + resolver calls — no filesystem, no randomness, no filenames. |
 | `integration.js` | The seams other subsystems call (see below) — Phase 4B routes them through `intelligence.js`. |
+| `provider.js` | Phase 4C. The provider layer between planner and renderer: `provideAsset`/`provideMusic`/`provideSfx`/`provideIcon` turn semantic refs (or resolved records) into frozen, JSON-safe **render-ready objects** — a `/api/assets/<id>/file` src URL plus the timeline contract (`start`/`end`/`volume`/`loop`/`fadeIn`/`fadeOut`/`enabled`/`priority`). `PROVIDER_MIX` is the engine's fixed, deterministic mix; `publicAsset()` is the API-safe record view (no filesystem fields). |
+| `timeline.js` | Phase 4C. `buildAssetTimeline()` — pure function from a planned project (scenes + word timings + musicPlan + style) to `{ music, sfx, icons }`: one looping music bed per the persisted policy decision, motion-driven SFX (style-gated) + planner content accents placed on the voiceover word timings, and scene-timed icon objects for semantic `icon.*` refs. |
 | `index.js` | Public API. `initAssetEngine()` populates the singleton registry (explicit + awaited, NOT an import side effect; idempotent per process, `{ force: true }` re-imports). Everything outside `assets/` imports from here only. |
 
 ## The AssetRecord (schema.js)
@@ -191,9 +197,73 @@ extensions, so 4A callers behave identically:
 - `assetForPlanner(ref)` / `plannerAssetVocabulary(style?)` — planner seams; the vocabulary keeps its 4A shape and adds `musicCategories`, `sfxEvents`, and `plannerSfx` (all registry-derived, auto-expanding).
 - `assetPathForRender(ref)` — what pipeline.js will hand to Remotion when audio/icon layers arrive.
 
-In production, the seams now feed the scene planner (`shotsPrompt` sfx vocabulary,
-`validateShots` resolution) and the pipeline's music plan; the render itself still
-consumes no audio/icons (later phase).
+In production, the seams feed the scene planner (`shotsPrompt` sfx vocabulary,
+`validateShots` resolution) and the pipeline's music plan; since Phase 4C the render
+consumes the provider's asset timeline (below).
+
+## The Asset Provider (`provider.js` + `timeline.js` + `/api/assets`, Phase 4C)
+
+The provider is the layer between the planner and the renderer. **The renderer never
+sees a semantic id, a registry record, or a filesystem path** — it receives resolved,
+render-ready asset objects:
+
+```js
+provideMusic('music.epic')
+// {
+//   ref: 'music.epic', assetId: 'music.blade-runner-2049',
+//   category: 'music', type: 'audio',
+//   src: '/api/assets/music.blade-runner-2049/file',   // the ONLY address renderers know
+//   duration: 148.4,
+//   start: 0, end: null,        // end:null = the natural end (video end when looping)
+//   volume: 0.14, loop: true, fadeIn: 1, fadeOut: 1.5,
+//   enabled: true, priority: 10
+// }
+```
+
+Every provided asset carries the full **timeline contract** —
+`start`, `end`, `volume`, `loop`, `fadeIn`, `fadeOut`, `enabled`, `priority` — and
+unknown future fields ride along untouched (compatibility by construction). Objects are
+frozen and JSON-safe, so timelines persist/replay deterministically. Unresolvable refs
+return `null`; category guards mean a music request can never come back as an icon.
+
+The engine's mix is fixed data (`PROVIDER_MIX`): the music bed sits well under the
+voiceover (0.14, 1s/1.5s fades, looped), motion SFX are accents (0.55, priority 20),
+planner content SFX slightly louder (0.7, priority 30). One-shot SFX get an explicit
+`end` pre-filled from the clip's measured duration.
+
+`provideIcon('icon.money', { color?, size?, animation? })` is the icon layer's surface:
+a render-ready image object with the declared future fields defaulting to `null`. No
+composition draws these yet **by design** — the objects flow through the timeline so the
+UI/composition work is purely additive later.
+
+### The asset timeline
+
+`buildAssetTimeline({ scenes, words, durationSec, style, musicPlan, projectMusic, baseUrl })`
+→ `{ music, sfx, icons }` — a pure, deterministic function:
+
+- **music** — the persisted Phase 4B `musicPlan` wins (`none` = silence, `custom:` =
+  reserved, no bed yet); a legacy project without a plan re-derives the same decision
+  through `selectMusic`. One looping bed for the whole video.
+- **sfx** — for each scene, the motion fields (`transition`/`motion`/`effect`) run
+  through the style-gated motion→SFX event table, and the planner's content accent
+  (`scene.sfx`) is placed at the scene start; starts come from the voiceover word
+  timings (the same rule Short.jsx uses to place scenes). The same sound at the same
+  moment plays once.
+- **icons** — scenes referencing SEMANTIC `icon.*` refs get scene-timed icon objects;
+  emoji/free-text icon hints are not assets and remain the compositions' business.
+
+### Serving (`/api/assets`) and rendering
+
+- `GET /api/assets/:id` → `publicAsset()` metadata (no `localPath`, no `hash`).
+- `GET /api/assets/:id/file` → streams the file with the right content type (Range
+  supported). **Exact registered ids only** — semantic resolution happens in the
+  provider before a URL is built, so the HTTP surface stays a dumb, safe file server.
+
+`stepRender` builds the timeline (baseUrl = the local server) and passes it as
+`inputProps.assets`. `remotion/assets-audio.jsx` (`<AssetAudioLayer>`) plays
+`assets.music` + `assets.sfx` — Sequences from the timeline fields, per-frame linear
+fade volumes, `loop` honored, disabled/silent entries skipped. It consumes ONLY provider
+objects. `assets` defaults to `null`, so pre-4C projects render byte-identically.
 
 ## Server startup
 
@@ -228,16 +298,27 @@ changes; `updatedAt` moves.
   degradation, engine fallback, empty library), planner integration (prompt vocabulary,
   `validateShots` resolution, no filenames anywhere), and duplicate safety (idempotent
   init, forced re-import, frozen tables).
+- `node scripts/test-assets-provider.js` — 60 Phase 4C checks: provider objects
+  (timeline contract, defaults, overrides, future-field pass-through, category guards,
+  URL building, no filesystem leakage), the music/SFX/icon layer providers, the
+  timeline builder (policy precedence, style gating, dedup, word-timing placement,
+  determinism), fallbacks (empty registry, missing words, legacy scenes), and the live
+  `/api/assets` routes against an ephemeral server.
+- `node scripts/test-render-assets.js` — real render WITH an asset timeline (server on
+  :4000 required), then measures the voiceover-free tail of the output: music bed
+  audible (≈ −41 dBFS) vs digital silence in a no-assets control render.
 - `node scripts/demo-assets.js` — walks every subsystem against the real library and
   prints a human-readable tour (import summary, registry stats, ranked searches,
   semantic resolutions, integration seams, health report).
 
-Run both smoke tests after any `src/assets/` change.
+Run the three smoke tests after any `src/assets/` change.
 
 ## What later phases add
 
 - **Providers/downloading**: fetch missing assets from free providers into the library
   (the importer/registry need no changes — new files are just imported).
-- **Render integration**: actual background-music and SFX audio layers (consuming
-  `musicPlan` + per-shot `sfx` + the motion events) and SVG icon layers in Remotion,
-  via `assetPathForRender`.
+- **Icon/UI consumption**: compositions drawing the timeline's icon objects
+  (color/size/animation are already in the contract); frontend music picker
+  (`/api/options` music vocabulary) and the `custom:<ref>` upload flow.
+- **Music licensing review** before anything is published to YouTube — several library
+  tracks are `license: "unknown"`.

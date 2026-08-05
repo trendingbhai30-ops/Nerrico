@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { AbsoluteFill, Audio, Sequence, useVideoConfig } from 'remotion';
 import { getStyle } from './styles/index.js';
+import { AssetAudioLayer } from './assets-audio.jsx';
 import { MotionEffect, TransitionShell, useTransitionMotion } from './motion/hooks.js';
 import { motionRegistry } from './motion/registry.js';
 
@@ -47,7 +48,7 @@ function SceneMotion({ scene, children }) {
   );
 }
 
-export function Short({ audioUrl, words, scenes, durationSec, style = 'vox', branding = null }) {
+export function Short({ audioUrl, words, scenes, durationSec, style = 'vox', branding = null, assets = null }) {
   const { fps } = useVideoConfig();
   const S = getStyle(style);
   const contentEndF = Math.round((durationSec + 1) * fps);
@@ -83,6 +84,9 @@ export function Short({ audioUrl, words, scenes, durationSec, style = 'vox', bra
       ) : null}
       <S.ProgressBar />
       {audioUrl ? <Audio src={audioUrl} /> : null}
+      {/* Asset Engine timeline (Phase 4C): music bed + SFX accents. `assets`
+          defaults to null, so pre-4C projects render byte-identically. */}
+      <AssetAudioLayer assets={assets} />
     </AbsoluteFill>
   );
 }

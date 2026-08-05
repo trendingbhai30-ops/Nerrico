@@ -94,12 +94,13 @@ Nerrico is developed in **explicit, sequential phases**. Each phase is scoped up
 > ✅ **Phase 4A — Asset Engine Foundation** complete: the local asset library (music, SFX, Tabler icons) imported into a validated, searchable registry with semantic-id resolution and integration seams for the motion engine, styles, planner, and renderer ([architecture](docs/asset-engine.md)).
 >
 > ✅ **Phase 4B — Asset Intelligence** complete: the Asset Engine now selects assets automatically — motion kinds map to semantic sound events, each visual style carries its own asset preferences (music, SFX level, icon flavor), music follows a user → project → style → engine policy chain, and the shot planner references semantic asset ids (never filenames). No audio in renders yet — selection only.
+>
+> ✅ **Phase 4C — Asset Provider & Render Integration** complete: renders now have sound — a provider layer resolves semantic ids into render-ready asset objects (URL + start/end/volume/loop/fades/priority timeline fields, never a file path), a deterministic per-project asset timeline drives the new audio layer in the Short composition (looping ducked music bed + motion/planner SFX accents), and `/api/assets` serves the library. Icon objects flow through the same timeline, ready for future compositions.
 
 **Upcoming phases:**
 
 | Phase | Focus |
 |---|---|
-| 4 | Asset Engine |
 | 5 | Voice Engine |
 | 6 | Caption Engine |
 | 7 | UI |
@@ -164,10 +165,10 @@ Additional design docs live in [`docs/`](docs/), including the backend API contr
   - [x] Phase 2C — Advanced Camera Motion Library (rotate, orbit, push, shake, focus pull + presets + CameraDemo)
   - [x] Phase 2D — Remaining transitions & effects (TransitionShell + MotionEffect renderers, TransitionDemo + EffectsDemo)
 - [x] Phase 3 — Style Bible (visual style registry, 9 selectable looks, prompt consistency system)
-- [ ] Phase 4 — Asset Engine
+- [x] Phase 4 — Asset Engine (asset providers/downloading deferred to a future phase)
   - [x] Phase 4A — Asset Engine foundation (schema, registry, importer + cache, search, resolver, integration seams)
   - [x] Phase 4B — Asset intelligence (semantic selection, style→asset preferences, motion→SFX events, music policy, planner integration)
-  - [ ] Phase 4C — up next (candidates: in-render audio/icon layers, asset providers/downloading)
+  - [x] Phase 4C — Asset provider & render integration (render-ready asset objects, asset timeline, in-render music + SFX, `/api/assets`, icon objects)
 - [ ] Phase 5 — Voice Engine
 - [ ] Phase 6 — Caption Engine
 - [ ] Phase 7 — UI

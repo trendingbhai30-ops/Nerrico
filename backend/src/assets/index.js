@@ -25,6 +25,8 @@ export { ASSETS_DIR, ASSET_CACHE_PATH, assetAbsolutePath } from './paths.js';
 export { slugify } from './importer.js';
 export * from './integration.js';
 export * from './intelligence.js';
+export * from './provider.js';
+export * from './timeline.js';
 
 let initPromise = null;
 

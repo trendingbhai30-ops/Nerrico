@@ -7,7 +7,9 @@ All request/response bodies are JSON unless stated. The frontend must treat this
 
 **New in v2.1 (Phase 3 — Style Bible)**: `visualStyle` — a Style Bible look for the video, independent of the render `style`. Options come from `GET /api/options` → `visualStyles`; each option carries the `renderStyle` it belongs to, so the picker should show the visual styles matching the selected `style` (e.g. the 7 cinematic looks when `style=cinematic`). Optional everywhere: omitted or legacy projects default to the codified look of their render style (`cinematic` → `cinematic`, `vox` → `paper-collage`, `luxury` → `luxury`).
 
-**New in v2.2 (Phase 4B — Asset Intelligence)**: `music` — an optional per-project music setting: `"auto"` (default — the selected visual style picks), `"none"` (silence), or a semantic music category from `GET /api/options` → `music.categories` (e.g. `"music.epic"`). The resolved decision appears on the project as `musicPlan` after scene planning. Note: nothing plays audio in renders yet — this is selection only; the plan becomes audible in a later phase.
+**New in v2.2 (Phase 4B — Asset Intelligence)**: `music` — an optional per-project music setting: `"auto"` (default — the selected visual style picks), `"none"` (silence), or a semantic music category from `GET /api/options` → `music.categories` (e.g. `"music.epic"`). The resolved decision appears on the project as `musicPlan` after scene planning.
+
+**New in v2.3 (Phase 4C — Asset Provider & Render Integration)**: the `musicPlan` is now audible — rendered reels include the background music bed and SFX accents. New read-only library endpoints under `/api/assets` (below); the frontend never handles asset filenames or paths.
 
 ## Health
 
@@ -134,6 +136,22 @@ Only valid from `script_ready`, else `409`.
 `GET /api/projects/:id/thumbnail` → `200` image/png
 `GET /api/projects/:id/slide/:n` → `200` image/png (carousel slide n, 1-based, 1080x1350)
 `GET /api/projects/:id/slides.zip` → `200` application/zip (all slides, for easy upload to Instagram)
+
+## Library assets (v2.3)
+
+`GET /api/assets/:id` → `200` public asset metadata (exact registered id only):
+
+```json
+{
+  "id": "sfx.click", "name": "click", "displayName": "Click",
+  "type": "audio", "category": "sfx", "extension": ".mp3",
+  "duration": 1.489, "width": null, "height": null,
+  "license": "unknown", "author": "", "tags": ["click", "ui", "button", "tap"],
+  "url": "/api/assets/sfx.click/file"
+}
+```
+
+`GET /api/assets/:id/file` → `200` the asset file (audio/\* or image/svg+xml; supports range requests). `400` malformed id, `404` unknown id. Semantic refs are NOT resolved here — these routes take exact ids only (resolution happens backend-side in the Asset Provider). The frontend rarely needs these directly; they exist so renders and future pickers address assets by URL, never by path.
 
 ## Branding
 

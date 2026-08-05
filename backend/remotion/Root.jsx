@@ -24,6 +24,7 @@ export function Root() {
           durationSec: 3,
           style: 'vox',
           branding: null,
+          assets: null,
           words: [
             { word: 'NERRICO', start: 0.1, end: 0.5 },
             { word: 'TEST', start: 0.6, end: 1.0 },

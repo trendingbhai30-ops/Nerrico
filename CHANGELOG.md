@@ -4,6 +4,28 @@ All completed phases and major architectural changes, newest first. Add an entry
 
 ---
 
+## 2026-08-05 — Phase 4C: Asset Provider & Render Integration ✅
+
+Renders have sound. The Asset Engine now supplies real assets to compositions through a
+provider layer — the renderer requests nothing and receives only **resolved asset
+objects** (an `/api/assets/<id>/file` src URL + timeline fields), never a semantic id,
+registry record, or filesystem path. Fully deterministic end to end; Motion Engine,
+Style Bible, and every 4A/4B API untouched. Pre-4C projects render byte-identically
+(`assets` inputProp defaults to null). Architecture doc: `docs/asset-engine.md`.
+
+- **Provider API** (`src/assets/provider.js`, new): `provideAsset` / `provideMusic` / `provideSfx` / `provideIcon` — semantic ref (or resolved record) → frozen, JSON-safe render-ready object carrying the timeline contract (`start`, `end`, `volume`, `loop`, `fadeIn`, `fadeOut`, `enabled`, `priority`; unknown future fields pass through untouched). Category-guarded, `null` on unresolvable, `end` pre-filled from measured clip duration for one-shot SFX. `PROVIDER_MIX` fixes the deterministic mix (ducked looping music bed 0.14 with 1s/1.5s fades; motion SFX 0.55; content SFX 0.7). `publicAsset()` = the API-safe record view (no `localPath`/`hash`).
+- **Asset timeline** (`src/assets/timeline.js`, new): `buildAssetTimeline()` — pure function from planned project (scenes + word timings + `musicPlan` + style) to `{music, sfx, icons}`. Music: persisted plan wins (`none` = silence; `custom:` reserved), legacy projects re-derive the identical 4B decision. SFX: scene motion fields through the style-gated motion→SFX events + planner `scene.sfx` accents, placed on voiceover word timings, deduped per moment. Icons: semantic `icon.*` refs become scene-timed render-ready icon objects (color/size/animation fields reserved, null); emoji stay with the compositions.
+- **Music layer**: supports auto (style-driven), none, semantic category, project preference, per-request user selection (`selectMusic` user tier), and the `custom:<ref>` upload placeholder — no manual filenames anywhere.
+- **SFX layer**: transition/motion/effect events (style-gated) + planner scene accents; nothing hardcoded — all refs resolve through the registry at build time.
+- **Serving routes** (`src/api/routes/assets.js`, new): `GET /api/assets/:id` (public metadata, no filesystem fields) and `GET /api/assets/:id/file` (typed streaming, Range support). Exact registered ids only — 400 malformed / 404 unknown; no search surface.
+- **Render integration**: `stepRender` builds the timeline and passes `inputProps.assets`; new `remotion/assets-audio.jsx` `<AssetAudioLayer>` plays music + SFX (Sequences from timeline fields, per-frame linear fades, loop honored, disabled entries skipped) — consumes provider objects ONLY. `Short.jsx`: one new prop (`assets = null`) + the layer; Motion Engine untouched.
+- **Smoke test** `scripts/test-assets-provider.js` (**60 checks**): provider objects (contract, defaults, overrides, future-field pass-through, guards, no-leak), music/SFX/icon layers, timeline (policy precedence, style gating, dedup, word-timing placement, determinism, JSON-safety), fallbacks (empty registry, missing words, legacy scenes), and the live `/api/assets` routes on an ephemeral server.
+- **Audibility proof** `scripts/test-render-assets.js` (new): full render WITH a timeline, then PCM analysis of the voiceover-free tail — music bed at **−41 dBFS** vs **−200 dBFS digital silence** in the no-assets control render.
+- **Validated**: provider smoke 60/60, intelligence 67/67, assets 71/71, Style Bible 71/71, motion 159/159, motion-pipeline 17/17, live server E2E incl. new asset routes, backcompat re-render of `d2fe791fdb84` RENDER OK, render-with-assets RENDER OK, frontend `tsc` + `vite build` clean, oxlint pre-existing warnings only.
+- **Now blocking for YouTube**: the music-license review — several library tracks are copyrighted rips and they actually play in renders as of this phase.
+
+---
+
 ## 2026-08-05 — Phase 4B: Asset Intelligence ✅
 
 The Asset Engine went from passive library to intelligent provider: the planner and
