@@ -24,6 +24,7 @@ export { validateAssetRecord, ASSET_CATEGORIES, CATEGORY_ALIASES } from './schem
 export { ASSETS_DIR, ASSET_CACHE_PATH, assetAbsolutePath } from './paths.js';
 export { slugify } from './importer.js';
 export * from './integration.js';
+export * from './intelligence.js';
 
 let initPromise = null;
 

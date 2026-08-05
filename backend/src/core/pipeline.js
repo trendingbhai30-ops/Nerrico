@@ -14,6 +14,7 @@ import { scriptPrompt } from '../content/prompts.js';
 import { getMode } from '../content/modes.js';
 import { brandingProps } from '../content/branding.js';
 import { resolveVisualStyle, composeImagePrompt } from '../content/stylebible/index.js';
+import { selectMusic } from '../assets/index.js';
 import { planScenes } from './scenes.js';
 import { planSlides } from './slides.js';
 import { renderShort, renderSlides } from './render.js';
@@ -76,6 +77,15 @@ async function stepScenes(id) {
   // — composed deterministically here, never ad-hoc. scenes.json keeps the raw
   // planner prompt (s.imagePrompt); the composed prompt exists only per request.
   const visual = resolveVisualStyle(p.visualStyle, p.style);
+
+  // Music selection policy (Phase 4B): project setting → style default →
+  // engine fallback (the per-render user tier arrives with the frontend
+  // picker). Persisted as semantic data only — policy/source/ref/asset id,
+  // never a file path; the render step consumes it when audio layers land.
+  const music = selectMusic({ project: p.music, style: visual });
+  updateProject(id, {
+    musicPlan: { policy: music.policy, source: music.source, ref: music.ref, assetId: music.assetId },
+  });
 
   // Cinematic shots — visual-priority chain, every shot MUST get imagery:
   //   1. AI image (chain in providers/images, keyless Pollinations last resort)

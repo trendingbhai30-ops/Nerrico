@@ -3,6 +3,7 @@ import { MODES, LANGUAGES, FORMATS } from '../../content/modes.js';
 import { STYLES } from '../../content/styles.js';
 import { visualStyleOptions } from '../../content/stylebible/index.js';
 import { logoPath } from '../../content/branding.js';
+import { musicCategoryVocabulary } from '../../assets/index.js';
 
 export const metaRouter = Router();
 
@@ -20,6 +21,10 @@ metaRouter.get('/options', (req, res) => {
     styles: Object.values(STYLES).map((s) => ({ id: s.id, name: s.name, description: s.description })),
     visualStyles: visualStyleOptions(),
     formats: FORMATS,
+    // Music policy vocabulary (Phase 4B): fixed policies + the semantic
+    // categories the library currently supports (registry-derived, so this
+    // list grows with the library — nothing to update here).
+    music: { policies: ['auto', 'none'], categories: musicCategoryVocabulary() },
   });
 });
 

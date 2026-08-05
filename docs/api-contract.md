@@ -7,6 +7,8 @@ All request/response bodies are JSON unless stated. The frontend must treat this
 
 **New in v2.1 (Phase 3 — Style Bible)**: `visualStyle` — a Style Bible look for the video, independent of the render `style`. Options come from `GET /api/options` → `visualStyles`; each option carries the `renderStyle` it belongs to, so the picker should show the visual styles matching the selected `style` (e.g. the 7 cinematic looks when `style=cinematic`). Optional everywhere: omitted or legacy projects default to the codified look of their render style (`cinematic` → `cinematic`, `vox` → `paper-collage`, `luxury` → `luxury`).
 
+**New in v2.2 (Phase 4B — Asset Intelligence)**: `music` — an optional per-project music setting: `"auto"` (default — the selected visual style picks), `"none"` (silence), or a semantic music category from `GET /api/options` → `music.categories` (e.g. `"music.epic"`). The resolved decision appears on the project as `musicPlan` after scene planning. Note: nothing plays audio in renders yet — this is selection only; the plan becomes audible in a later phase.
+
 ## Health
 
 `GET /api/health`
@@ -39,10 +41,14 @@ Frontend shows a "backend offline" banner whenever this fails.
     {"id": "modern-tech", "name": "Modern Tech", "description": "...", "renderStyle": "cinematic"},
     {"id": "minimal", "name": "Minimal Gallery", "description": "...", "renderStyle": "cinematic"}
   ],
-  "formats": ["reel", "carousel"]
+  "formats": ["reel", "carousel"],
+  "music": {
+    "policies": ["auto", "none"],
+    "categories": ["music.ambient", "music.calm", "music.cinematic", "music.corporate", "music.documentary", "music.epic", "music.tech", "music.upbeat", "…"]
+  }
 }
 ```
-When the selected mode has `researchOptional: true`, the research textarea may be left empty (a good title is enough). The voice picker is only shown/required when `format` is `reel`.
+When the selected mode has `researchOptional: true`, the research textarea may be left empty (a good title is enough). The voice picker is only shown/required when `format` is `reel`. `music.categories` is derived from the local music library's tags and grows automatically — populate a picker from it, never hardcode.
 
 ## Voices
 
@@ -64,7 +70,8 @@ Body:
   "language": "english | hinglish (default english)",
   "style": "vox | luxury (default vox)",
   "visualStyle": "a visualStyles id from /api/options (optional; defaults to the render style's own look; 400 on unknown ids)",
-  "format": "reel | carousel (default reel)"
+  "format": "reel | carousel (default reel)",
+  "music": "auto | none | a music.categories id from /api/options (optional; default auto; 400 only on non-string/empty — unknown categories degrade to the style default)"
 }
 ```
 → `201 {"id": "string"}`
@@ -87,6 +94,8 @@ Body:
   "style": "vox | luxury",
   "visualStyle": "a visualStyles id (always present; legacy projects report their render style's default)",
   "format": "reel | carousel",
+  "music": "auto | none | a semantic music category (always present; legacy projects report auto)",
+  "musicPlan": "null until scene planning, then {\"policy\": \"auto | category | none | custom\", \"source\": \"user | project | style | engine\", \"ref\": \"string | null\", \"assetId\": \"string | null\"}",
   "script": "string | null (reels only)",
   "slides": "null | [{\"role\": \"hook | content | cta\", \"heading\": \"string\", \"body\": \"string\"}] (carousels only)",
   "error": "string | null",

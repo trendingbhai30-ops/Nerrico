@@ -33,6 +33,8 @@ function publicProject(p) {
     style: p.style,
     visualStyle: p.visualStyle,
     format: p.format,
+    music: p.music,
+    musicPlan: p.musicPlan,
     script: p.script,
     slides: p.slides,
     error: p.error,
@@ -66,6 +68,7 @@ projectsRouter.post('/', (req, res) => {
     style = 'vox',
     visualStyle,
     format = 'reel',
+    music,
   } = req.body || {};
   if (!title || typeof title !== 'string') throw new HttpError(400, 'A title is required');
   if (!getMode(mode)) throw new HttpError(400, 'Unknown mode');
@@ -78,6 +81,12 @@ projectsRouter.post('/', (req, res) => {
     throw new HttpError(400, 'Unknown visual style');
   }
   if (!FORMATS.includes(format)) throw new HttpError(400, 'Unknown format');
+  // music is optional: 'auto' (default), 'none', or a semantic music category
+  // ("music.epic"). Open vocabulary by design — an unresolvable category
+  // degrades through the selection policy instead of failing the request.
+  if (music !== undefined && (typeof music !== 'string' || !music.trim() || music.length > 100)) {
+    throw new HttpError(400, 'music must be "auto", "none", or a semantic music category');
+  }
   const researchText = typeof research === 'string' ? research.trim() : '';
   if (!researchText && !getMode(mode).researchOptional) {
     throw new HttpError(400, 'Research text is required');
@@ -92,6 +101,7 @@ projectsRouter.post('/', (req, res) => {
     style,
     visualStyle: visualStyle || defaultVisualStyle(style),
     format,
+    music: music ? music.trim().toLowerCase() : 'auto',
   });
   res.status(201).json({ id: project.id });
 });

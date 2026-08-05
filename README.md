@@ -92,6 +92,8 @@ Nerrico is developed in **explicit, sequential phases**. Each phase is scoped up
 > ✅ **Phase 3 — Style Bible** complete: a registry of validated visual style definitions — 9 selectable looks across the three render styles, a deterministic image-prompt consistency system, and a shot planner composed entirely from structured style data ([architecture](docs/style-bible.md)).
 >
 > ✅ **Phase 4A — Asset Engine Foundation** complete: the local asset library (music, SFX, Tabler icons) imported into a validated, searchable registry with semantic-id resolution and integration seams for the motion engine, styles, planner, and renderer ([architecture](docs/asset-engine.md)).
+>
+> ✅ **Phase 4B — Asset Intelligence** complete: the Asset Engine now selects assets automatically — motion kinds map to semantic sound events, each visual style carries its own asset preferences (music, SFX level, icon flavor), music follows a user → project → style → engine policy chain, and the shot planner references semantic asset ids (never filenames). No audio in renders yet — selection only.
 
 **Upcoming phases:**
 
@@ -164,8 +166,8 @@ Additional design docs live in [`docs/`](docs/), including the backend API contr
 - [x] Phase 3 — Style Bible (visual style registry, 9 selectable looks, prompt consistency system)
 - [ ] Phase 4 — Asset Engine
   - [x] Phase 4A — Asset Engine foundation (schema, registry, importer + cache, search, resolver, integration seams)
-  - [ ] Phase 4B — Asset providers/downloading
-  - [ ] Phase 4C — Asset intelligence (style-aware selection, motion→SFX mapping, in-render audio/icon layers)
+  - [x] Phase 4B — Asset intelligence (semantic selection, style→asset preferences, motion→SFX events, music policy, planner integration)
+  - [ ] Phase 4C — up next (candidates: in-render audio/icon layers, asset providers/downloading)
 - [ ] Phase 5 — Voice Engine
 - [ ] Phase 6 — Caption Engine
 - [ ] Phase 7 — UI

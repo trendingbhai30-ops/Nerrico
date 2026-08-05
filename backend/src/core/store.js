@@ -17,7 +17,7 @@ function projectFile(id) {
   return path.join(projectDir(id), 'project.json');
 }
 
-export function createProject({ title, research, voiceId, mode, language, style, format, visualStyle }) {
+export function createProject({ title, research, voiceId, mode, language, style, format, visualStyle, music }) {
   const id = crypto.randomBytes(6).toString('hex');
   const project = {
     id,
@@ -29,6 +29,8 @@ export function createProject({ title, research, voiceId, mode, language, style,
     style: style || 'vox',
     visualStyle: visualStyle || defaultVisualStyle(style || 'vox'),
     format: format || 'reel',
+    music: music || 'auto',
+    musicPlan: null,
     status: 'created',
     script: null,
     slides: null,
@@ -52,6 +54,8 @@ export function getProject(id) {
   project.style ||= 'vox';
   project.visualStyle ||= defaultVisualStyle(project.style); // pre-Style-Bible projects
   project.format ||= 'reel';
+  project.music ||= 'auto'; // pre-Asset-Engine projects
+  project.musicPlan ??= null;
   project.slides ??= null;
   return project;
 }

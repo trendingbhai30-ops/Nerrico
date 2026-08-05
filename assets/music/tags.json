@@ -10,20 +10,20 @@
   "vidssave.com Dramamine 256KBPS.webm": {
     "name": "dramamine",
     "displayName": "Dramamine",
-    "tags": ["lofi", "calm", "slow", "ambient", "sad", "documentary", "background"],
+    "tags": ["lofi", "calm", "slow", "ambient", "sad", "emotional", "documentary", "background"],
     "keywords": ["melancholy", "dreamy", "soft"]
   },
   "vidssave.com Lilac Skies 256KBPS.webm": {
     "name": "lilac-skies",
     "displayName": "Lilac Skies",
-    "tags": ["lofi", "dreamy", "calm", "ambient", "background"],
-    "keywords": ["airy", "peaceful", "light"]
+    "tags": ["lofi", "dreamy", "calm", "ambient", "quiet", "premium", "elegant", "background"],
+    "keywords": ["airy", "peaceful", "light", "luxury", "soft"]
   },
   "vidssave.com Synthwave Goose - Blade Runner 2049 [NCS Fanmade] 256kbps.webm": {
     "name": "blade-runner-2049",
     "displayName": "Blade Runner 2049 (Synthwave)",
     "author": "Synthwave Goose",
-    "tags": ["synthwave", "dark", "cinematic", "tension", "electronic", "dramatic"],
+    "tags": ["synthwave", "dark", "cinematic", "tension", "electronic", "dramatic", "tech", "epic"],
     "keywords": ["retro", "futuristic", "intense", "documentary"]
   },
   "vidssave.com THANK YOU - INSTRUMENTAL - Tyler, The Creator 256kbps.webm": {
@@ -36,7 +36,7 @@
   "vidssave.com Upbeat Intro music percussion music 256kbps.webm": {
     "name": "upbeat-percussion-intro",
     "displayName": "Upbeat Percussion Intro",
-    "tags": ["upbeat", "percussion", "energetic", "intro", "bright"],
+    "tags": ["upbeat", "percussion", "energetic", "intro", "bright", "corporate"],
     "keywords": ["drums", "opener", "positive"]
   }
 }

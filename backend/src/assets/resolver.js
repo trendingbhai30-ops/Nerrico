@@ -29,7 +29,14 @@ export function resolveInRegistry(registry, ref) {
   const exact = registry.get(clean);
   if (exact) return exact;
 
-  const segments = clean.split('.').filter(Boolean);
+  // Registered ids are all-lowercase, so camelCase can only appear in semantic
+  // refs ("sfx.paperRip") — split the humps into segments before searching.
+  const segments = ref
+    .trim()
+    .replace(/([a-z0-9])([A-Z])/g, '$1.$2')
+    .toLowerCase()
+    .split('.')
+    .filter(Boolean);
   const category = CATEGORY_ALIASES[segments[0]];
   if (category && segments.length > 1) {
     const terms = segments.slice(1);

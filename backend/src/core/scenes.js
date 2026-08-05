@@ -3,6 +3,7 @@ import { scenesPrompt, shotsPrompt } from '../content/prompts.js';
 import { getStyleDef } from '../content/styles.js';
 import { resolveVisualStyle } from '../content/stylebible/index.js';
 import { motionRegistry, resolveMotion } from '../../remotion/motion/index.js';
+import { resolveAsset } from '../assets/index.js';
 
 /**
  * Ask Claude to plan scenes, then validate/repair the result.
@@ -51,6 +52,17 @@ const effectOrNull = (name) => {
   return null;
 };
 
+// Planner-emitted "sfx" refs are SEMANTIC asset ids (Phase 4B) — resolved
+// through the Asset Engine here, exactly like motion names are checked against
+// the Motion Registry above. Unresolvable/wrong-category refs are stripped to
+// null (no sound; content input must never crash). The stored value is the
+// resolved registry id, so later phases replay it without a second lookup.
+const plannerSfxOrNull = (ref) => {
+  if (typeof ref !== 'string' || !ref.trim()) return null;
+  const asset = resolveAsset(ref);
+  return asset && asset.category === 'sfx' ? asset.id : null;
+};
+
 export function validateShots(data, wordCount) {
   const shots = data?.shots || data?.scenes;
   if (!Array.isArray(shots) || shots.length === 0) {
@@ -69,6 +81,7 @@ export function validateShots(data, wordCount) {
     motion: registeredOrNull('preset', s.motion),
     transition: transitionOrNull(s.transition),
     effect: effectOrNull(s.effect),
+    sfx: plannerSfxOrNull(s.sfx),
   }));
   for (const s of scenes) {
     if (!Number.isFinite(s.start) || !Number.isFinite(s.end)) {

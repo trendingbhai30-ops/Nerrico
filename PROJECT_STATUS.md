@@ -1,11 +1,11 @@
 # PROJECT_STATUS.md
 
 > Snapshot of where Nerrico stands right now. Update this file at the end of every phase.
-> Last updated: **2026-08-04** (after Phase 4A — Asset Engine Foundation)
+> Last updated: **2026-08-05** (after Phase 4B — Asset Intelligence)
 
 ## Current Phase
 
-**Phase 4A (Asset Engine Foundation) is COMPLETE and validated (NOT yet committed — working tree changes awaiting user approval; Phase 3 was committed as `1df536c`).** Every local music track, SFX, and icon is now a validated, frozen `AssetRecord` in a searchable registry (`backend/src/assets/`), resolved by semantic id (`sfx.paper.rip`, `music.documentary.calm`, `icon.money`) — never by file path. Library: `Nerrico/assets/` (6 music + 26 sfx + 6,184 Tabler icons = 6,216 assets). Purely additive — nothing consumes assets in production yet; the integration seams for Motion/Style Bible/planner/render are interfaces awaiting Phase 4C. Architecture doc: `docs/asset-engine.md`. Next: **Phase 4B — asset providers/downloading**, then **4C — asset intelligence**. Do not start without user approval.
+**Phase 4B (Asset Intelligence) is COMPLETE and validated (NOT yet committed — working tree changes awaiting user approval; Phase 4A was committed as `fb9e61f`).** The Asset Engine is now an intelligent provider: motion kinds map to semantic sound events (slide→whoosh, flash→camera shutter, paperReveal→paper tear…), every Style Bible look carries declarative asset preferences (paper-collage→paper rips + documentary lofi, modern-tech→glitches + tech synth, luxury→soft whooshes + premium calm, minimal→almost no SFX + quiet music), and music selection follows a strict policy chain (user choice → project setting → style default → engine fallback). The shot planner now references semantic asset ids (an optional per-shot `"sfx"` field, vocabulary auto-derived from the registry), `validateShots` resolves them, and `stepScenes` persists a `musicPlan` per project. All Phase 4A APIs unchanged; Motion Engine and Style Bible untouched; **no audio plays in renders yet** (that is the render-integration phase). Architecture doc: `docs/asset-engine.md`. Do not start the next phase without user approval.
 
 ## Completed Work
 
@@ -97,11 +97,24 @@
 - **Demo + smoke test**: `scripts/demo-assets.js` (real-library tour, health report clean) and `scripts/test-assets.js` (**71 checks**: synthetic fixture tree for importer/registry/schema/cache/search/resolver/duplicate-prevention/validation + real-library sanity).
 - **Validated**: asset smoke 71/71, motion smoke 159/159, Style Bible smoke 71/71, pipeline test 17/17, fresh server boots + imports 6,216 assets + all endpoints healthy, frontend `tsc` + `vite build` clean, oxlint 1 pre-existing warning only.
 
+### Phase 4B — Asset Intelligence (2026-08-05)
+
+- **`src/assets/intelligence.js`** — the decision layer on top of the 4A foundation. Pure data + resolver calls: no filesystem, no randomness, no filenames anywhere. Three systems:
+  - **Motion→SFX semantic events** (`MOTION_SFX_EVENTS`): slide→`sfx.whoosh`, whip→`sfx.swoosh`, flash→`sfx.camera.shutter`, paperReveal→`sfx.paper.tear`, push→`sfx.zoom.hit`, shake→`sfx.impact`, focusPull→`sfx.focus.subtle`; fade/morph/zoom/pan/rotate/orbit silent by design. Presets resolve to their kind via the Motion Registry's public API (impactShake→shake, rackFocus→focusPull, heroReveal→slide) — Motion Engine untouched. Semantic mapping only; nothing renders sound yet.
+  - **Style→asset preferences** (`STYLE_ASSET_PREFERENCES`): one declarative entry per active Style Bible look (keyed by name — definitions untouched) + `default` for unknown styles. Fields: `music` (semantic default track), `sfxLevel` (full/reduced/minimal — reduced silences camera-move sounds, minimal plays only explicit overrides), `motionSfx` overrides (paper-collage & history swap paper tear → paper RIP; luxury softens the slide whoosh; modern-tech & ai-documentary voice the silent morph with a glitch), `iconVariant` (modern-tech/ai-documentary prefer filled) + `iconTerms`.
+  - **Music selection policy** (`selectMusic`): user choice → project setting → style default → engine fallback (`music.calm.background`); values `auto` (fall through), `none` (real decision), `custom:<ref>` (reserved for future uploads), or any semantic category (`music.epic`, bare `epic` works). Unresolvable choices degrade to the next tier with a `trail` note; category-guarded resolution; empty library → silence, never a crash.
+- **Semantic vocabulary expanded**: resolver now splits camelCase refs (`sfx.paperRip` ≡ `sfx.paper.rip`); library sidecars curated with semantic tags so `music.epic/corporate/tech/emotional/premium/quiet` and `sfx.focus.subtle`/`sfx.swoosh.soft`/`sfx.zoom.hit` resolve deterministically. Music categories are derived from track tags (`musicCategoryVocabulary`) — the vocabulary **expands automatically** as the library grows.
+- **Integration seams upgraded, signatures unchanged** (4A callers behave identically): `sfxForMotion(kind, style?)` routes through the event table + style gating (unknown names keep the 4A search fallback); `assetForStyle(style, req)` is style-aware (bare music request → style default track; icon flavor-term rescue + filled-variant siblings); `plannerAssetVocabulary(style?)` keeps its 4A shape and adds `musicCategories`/`sfxEvents`/`plannerSfx`.
+- **Planner integration**: `shotsPrompt` offers an optional per-shot `"sfx"` field — registry-derived semantic ids only, content accents only (transition/riser sounds excluded: the motion mapping owns those), omitted entirely for minimal-level styles; `validateShots` resolves refs through the Asset Engine and stores canonical ids (unresolvable/wrong-category → `null`, never a crash).
+- **Pipeline + API**: `stepScenes` runs the music policy and persists `musicPlan {policy, source, ref, assetId}` (semantic data, no paths); `POST /api/projects` accepts optional `music` ('auto' default, validated, open category vocabulary); store persists + backfills `music`/`musicPlan` for old projects; `GET /api/options` exposes `music: {policies, categories}`; project GET returns both fields.
+- **Smoke test**: `scripts/test-assets-intelligence.js` — **67 checks** (semantic resolution, resolver fallback, style selection incl. table↔Style-Bible cross-check and real-library resolvability of every pref, motion mapping incl. levels/overrides/presets, full music policy chain, planner integration, duplicate safety incl. idempotent/forced re-import and frozen tables).
+- **Validated**: intelligence smoke 67/67, asset smoke 71/71 (4A untouched), motion 159/159, Style Bible 71/71, pipeline 17/17, live server E2E (options music vocabulary; create with `music.epic`; 400 on bad music; legacy create defaults to `auto`; deletes clean), full standalone re-render of `d2fe791fdb84` RENDER OK, frontend `tsc` + `vite build` clean, oxlint 1 pre-existing warning only.
+
 ## Pending Phases
 
-- Roadmap after Phase 2 (user-defined, see README): 3 Style Bible ✅, 4 Asset Engine (4A foundation ✅ → 4B providers/downloading → 4C asset intelligence), 5 Voice Engine, 6 Caption Engine, 7 UI, 8 Authentication & Firebase, 9 YouTube Upload, 10 Public Launch.
+- Roadmap after Phase 2 (user-defined, see README): 3 Style Bible ✅, 4 Asset Engine (4A foundation ✅ → 4B asset intelligence ✅ → next: providers/downloading + render audio/icon layers), 5 Voice Engine, 6 Caption Engine, 7 UI, 8 Authentication & Firebase, 9 YouTube Upload, 10 Public Launch.
 - Backlog candidates (user-acknowledged, not scheduled):
-  - Background music + SFX **in renders** (the local files are now registered by the Asset Engine; actually playing them in videos is Phase 4C).
+  - Background music + SFX **in renders** (the Asset Engine now DECIDES what should play — `musicPlan`, per-shot `sfx`, motion events — but nothing renders audio yet; that's the render-integration phase).
   - User accent-check of Adam speaking Hinglish (project `c54ed751b120`).
   - Free-tier-usable Hindi-sounding premade ElevenLabs voice.
   - Pexels/Pixabay free API keys for better stock photos.
@@ -118,7 +131,7 @@
   - `utils/` — logger (scopes + LOG_LEVEL), `errors.js` (HttpError), `json.js` (extractJson), `download.js`
   - `providers/` — `claude.js` (spawned `claude -p`, incl. `askClaudeJson` retry helper), `elevenlabs.js`, `images/` (one file per provider + `index.js` registry), `stock.js`, `commons.js`
   - `content/` — `modes.js`, `styles.js`, `voices.js`, `prompts.js`, `branding.js`, `stylebible/` (visual style registry + schema + definitions; see `docs/style-bible.md`)
-  - `assets/` — Asset Engine (schema/registry/cache/importer/search/resolver/validate/integration; see `docs/asset-engine.md`); library files live at repo-root `assets/` (music/sfx/icons)
+  - `assets/` — Asset Engine (schema/registry/cache/importer/search/resolver/validate/intelligence/integration; see `docs/asset-engine.md`); library files live at repo-root `assets/` (music/sfx/icons)
   - `core/` — `store.js`, `pipeline.js`, `scenes.js`, `slides.js`, `render.js`
   - `api/` — `app.js`, `routes/{meta,voices,projects}.js`, `middleware.js`
 - **Rendering**: `backend/remotion/` — `Short.jsx`, `Slide.jsx`, `scenes.jsx`, `styles/{vox,luxury,cinematic}.jsx`, `theme.js`. Untouched by Phase 1.
@@ -143,7 +156,7 @@
 
 - Git repo is local-only (no remote) — `nerrico-pre-phase1-backup.tgz` is the only other backup.
 - Remotion's bundled ffmpeg (the only ffmpeg on this machine) has NO `bmp` encoder (minimal `--disable-encoders` build; png/mjpeg/x264 only) and no `rawvideo` muxer — extract frames as `.png` only; for pixel comparisons use `pngjs` from backend node_modules.
-- No SFX/background music **in renders yet** — the Asset Engine (4A) registers the user's local music/sfx/icons, but nothing plays them; audio/icon layers land with asset intelligence (Phase 4C).
+- No SFX/background music **in renders yet** — the Asset Engine registers (4A) and now selects (4B: `musicPlan`, per-shot `sfx`, motion events) the user's local music/sfx, but nothing plays them; audio/icon layers land with the render-integration phase.
 - Music/SFX licenses are recorded as `unknown` (files are YouTube/download-site rips; several are copyrighted tracks — e.g. Tyler, The Creator instrumental, Blade Runner 2049 fanmade). Fine for local testing; **must be reviewed before anything is published to YouTube**. Icons are MIT (Tabler).
 - `Nerrico/assets/` (≈34 MB: 15 MB icons + 17 MB music + 1.6 MB sfx) is currently untracked — decide at commit time whether the library belongs in git.
 - Kastoori logo (`backend/config/kastoori-logo.png`) has a dark background, NOT transparent — may look like a dark box on light/cream slides; verify on first branded light render.
@@ -156,4 +169,4 @@
 
 ## Next Planned Phase
 
-**Phase 4B — Asset Providers/Downloading**, then **Phase 4C — Asset Intelligence** (style-aware selection, motion-kind→SFX mapping, planner asset vocabulary, actual audio/icon layers in renders). Phase 4A (Asset Engine Foundation) is complete and validated but NOT yet committed — the working tree holds the Phase 4A changes; commit needs user approval (and a decision on whether the ~34 MB `assets/` library goes into git). Note: the long-running backend server caches its Remotion bundle per process — restart it after `src/` or `motion/` changes. Do not start Phase 4B without user approval. Frontend follow-up owned by the user: a `visualStyle` picker populated from `/api/options` → `visualStyles`, filtered by the selected render style.
+**Phase 4C (user to define)** — natural candidates: actual audio layers in renders (consume `musicPlan` + per-shot `sfx` + motion events via `assetPathForRender`; requires a music-license review first) and/or asset providers/downloading. Phase 4B (Asset Intelligence) is complete and validated but NOT yet committed — the working tree holds the Phase 4B changes; commit needs user approval. Note: the long-running backend server caches its Remotion bundle per process — restart it after `src/` or `motion/` changes. Do not start the next phase without user approval. Frontend follow-ups owned by the user: `visualStyle` picker (from `/api/options` → `visualStyles`) and now a music picker (from `/api/options` → `music.policies` + `music.categories`, posted as the optional `music` field).

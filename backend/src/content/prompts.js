@@ -1,6 +1,7 @@
 import { MODES, getMode } from './modes.js';
 import { getStyleDef } from './styles.js';
 import { motionRegistry } from '../../remotion/motion/index.js';
+import { plannerSfxVocabulary } from '../assets/index.js';
 
 // Language blocks are inserted into script/carousel prompts. English adds nothing
 // (the mode's audience string already says "English").
@@ -149,6 +150,23 @@ function motionFieldLines(visual) {
   return lines.join('\n');
 }
 
+// Sound-accent bullet for shotsPrompt (Phase 4B planner integration). The
+// vocabulary is SEMANTIC asset ids straight from the Asset Engine registry —
+// never filenames or paths — narrowed by the style's asset preferences, so it
+// expands automatically as the library grows. Transition sounds are absent on
+// purpose (the motion→SFX mapping owns those); this field is for content
+// accents only. Empty when the style wants (almost) no SFX or nothing is
+// registered — the field then never enters the planner's vocabulary.
+function sfxFieldLines(visual) {
+  const options = plannerSfxVocabulary(visual);
+  if (!options.length) return [];
+  return [
+    `- "sfx": OPTIONAL sound accent underlining what the shot SHOWS, as a semantic id — one of: ${options.join(
+      ', '
+    )}. Use it on at most 2-4 shots where the content clearly calls for it (money beat → "sfx.money", a phone rings → "sfx.phone-ring"). Omit the field everywhere else; never invent other ids.`,
+  ];
+}
+
 // Cinematic render style: instead of typographic scenes, plan a shot list where
 // every shot is an AI-generated still + camera move + sparse caption.
 //
@@ -196,7 +214,7 @@ ${v.imagePrompt.rules.map((r) => `  * ${r}`).join('\n')}
 ${v.typography.rules.map((r) => `  * ${r}`).join('\n')}
 - "emphasis": 0-2 exact caption words to tint in the accent color.
 - "camera": one of "zoomIn", "zoomOut", "panLeft", "panRight" — vary it, never the same twice in a row. "zoomIn" for drama/tension, "zoomOut" for reveals, pans for places and passage of time.
-${motionFieldLines(v)}
+${[motionFieldLines(v), ...sfxFieldLines(v)].join('\n')}
 
 CONSISTENCY (non-negotiable — this is one film, not sixteen images):
 ${v.consistency.rules.map((r) => `- ${r}`).join('\n')}

@@ -4,6 +4,28 @@ All completed phases and major architectural changes, newest first. Add an entry
 
 ---
 
+## 2026-08-05 — Phase 4B: Asset Intelligence ✅
+
+The Asset Engine went from passive library to intelligent provider: the planner and
+pipeline now request **semantic ids** — never filenames — and the engine picks the best
+local asset, shaped by the selected Style Bible look. Backwards compatible throughout
+(every Phase 4A API unchanged, 4A smoke still 71/71); Motion Engine and Style Bible
+untouched. **Semantic mapping only — no audio plays in renders yet** (that's the
+render-integration phase). Architecture doc: `docs/asset-engine.md`.
+
+- **`src/assets/intelligence.js`** (new): the decision layer — pure data tables + resolver calls; no filesystem, no randomness, no filenames.
+- **Motion→SFX semantic events** (`MOTION_SFX_EVENTS` + `motionSfxEvent`/`sfxForMotion`): slide→`sfx.whoosh`, whip→`sfx.swoosh` (fast swoosh), flash→`sfx.camera.shutter`, paperReveal→`sfx.paper.tear`, push→`sfx.zoom.hit`, shake→`sfx.impact`, focusPull→`sfx.focus.subtle`; fade/morph/zoom/pan/rotate/orbit silent by design. Presets resolve to their kind through the Motion Registry's public API (impactShake→shake, rackFocus→focusPull, heroReveal→slide).
+- **Style→asset preference mapping** (`STYLE_ASSET_PREFERENCES` + `stylePreferencesFor`): one declarative entry per active look + `default` fallback — nothing hardcoded in call sites. Per style: default `music` ref, `sfxLevel` (full / reduced = camera moves silent / minimal = only explicit overrides), `motionSfx` overrides (paper-collage & history: paper tear→paper RIP; luxury: soft slide whoosh; modern-tech & ai-documentary: glitch morphs), `iconVariant` (filled for the tech looks) + `iconTerms`. Examples land exactly as specified: Paper Collage→rips + documentary music, Modern Tech→glitch + tech music + futuristic icons, Luxury→soft whoosh + premium music, Minimal→almost no SFX + quiet music, Documentary→cinematic ambience.
+- **Music selection policy** (`selectMusic`): **user choice → project setting → style default → engine fallback**; values `auto` | `none` | any semantic category (`music.epic`, bare `epic`) | reserved `custom:<ref>` for future uploads. Unresolvable choices degrade tier-by-tier with a `trail`; category-guarded resolution; empty library → silence, never a crash. Deterministic and JSON-serializable.
+- **Planner integration**: `shotsPrompt` gains an optional per-shot `"sfx"` field — vocabulary derived live from the registry (semantic ids only; content accents only — transition/riser sounds excluded because the motion mapping owns those; omitted entirely for minimal styles). `validateShots` resolves planner refs through the Asset Engine and stores canonical ids (unknown/wrong-category → `null`). Vocabulary expands automatically as the library grows — including `musicCategoryVocabulary()` derived from track tags.
+- **Pipeline + API**: `stepScenes` runs the music policy and persists `musicPlan {policy, source, ref, assetId}` on the project (semantic data only, no paths); `POST /api/projects` accepts optional `music` (default `'auto'`, validated); store backfills `music`/`musicPlan` on legacy projects; `GET /api/options` exposes `music: {policies, categories}`; project GET returns both fields.
+- **Resolver upgrade**: camelCase semantic refs now split into segments (`sfx.paperRip` ≡ `sfx.paper.rip`); registered ids are all-lowercase so exact lookups can't be shadowed.
+- **Library curation** (sidecars only, files untouched): semantic tags added so the new vocabulary resolves deterministically — music gains `epic`/`tech` (Blade Runner 2049), `corporate` (Upbeat Percussion), `emotional` (Dramamine), `quiet`/`premium`/`elegant` (Lilac Skies); sfx gains `zoom` (booms), `subtle`/`focus` (click-soft), `soft`/`gentle` (transition-swoosh).
+- **Smoke test** `scripts/test-assets-intelligence.js` (**67 checks**, pure Node): semantic id vocabulary, resolver fallback, style selection (incl. prefs-table ↔ Style Bible cross-check and real-library resolvability of every ref), motion mapping (defaults, presets, levels, overrides, 4A fallback), full music policy chain (tiers, auto/none/custom, degradation trail, engine fallback, empty library), planner integration (prompt vocabulary, validation, no-filenames guarantee), duplicate safety (idempotent init, forced re-import, frozen tables).
+- **Validated**: intelligence smoke **67/67**, asset smoke 71/71, motion 159/159, Style Bible 71/71, pipeline 17/17, live server E2E (music vocabulary in options; create with `music.epic`; 400 on invalid music; legacy default `auto`), full standalone re-render of `d2fe791fdb84` RENDER OK, frontend `tsc` + `vite build` clean, oxlint 1 pre-existing warning only.
+
+---
+
 ## 2026-08-04 — Phase 4A: Asset Engine Foundation ✅
 
 The local asset foundation: every music track, sound effect, and icon the pipeline may
