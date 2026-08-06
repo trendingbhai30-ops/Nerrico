@@ -13,8 +13,22 @@ const log = createLogger('voice');
 /**
  * Generate a voiceover with word-level timestamps.
  * Writes the mp3 to `outMp3` and returns { words: [{word,start,end}], durationSec }.
+ *
+ * Phase 5B: callers may pass per-voice `modelId` and `voiceSettings` resolved
+ * from the Voice Engine registry. Falls back to the global constants so
+ * pre-5B callers and tests remain unaffected.
+ *
+ * @param {{
+ *   text: string,
+ *   voiceId: string,
+ *   outMp3: string,
+ *   modelId?: string,
+ *   voiceSettings?: object
+ * }} opts
  */
-export async function generateVoiceover({ text, voiceId, outMp3 }) {
+export async function generateVoiceover({ text, voiceId, outMp3, modelId, voiceSettings }) {
+  const model    = modelId       || TTS_MODEL_ID;
+  const settings = voiceSettings || TTS_VOICE_SETTINGS;
   const res = await fetch(
     `${ELEVENLABS_API_URL}/text-to-speech/${voiceId}/with-timestamps?output_format=${TTS_OUTPUT_FORMAT}`,
     {
@@ -25,8 +39,8 @@ export async function generateVoiceover({ text, voiceId, outMp3 }) {
       },
       body: JSON.stringify({
         text,
-        model_id: TTS_MODEL_ID,
-        voice_settings: TTS_VOICE_SETTINGS,
+        model_id: model,
+        voice_settings: settings,
       }),
     }
   );

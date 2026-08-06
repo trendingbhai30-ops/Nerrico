@@ -1,11 +1,11 @@
 # PROJECT_STATUS.md
 
 > Snapshot of where Nerrico stands right now. Update this file at the end of every phase.
-> Last updated: **2026-08-05** (after Phase 4C — Asset Provider & Render Integration)
+> Last updated: **2026-08-06** (after Phase 5 — Voice Engine)
 
 ## Current Phase
 
-**Phase 4C (Asset Provider & Render Integration) is COMPLETE and validated (NOT yet committed — working tree changes awaiting user approval; 4A = `fb9e61f`, 4B = `852a126`).** The Asset Engine now feeds real assets into renders: a provider layer (`src/assets/provider.js`) turns semantic ids into render-ready objects (a `/api/assets/<id>/file` src URL + the timeline contract: start/end/volume/loop/fadeIn/fadeOut/enabled/priority — never a filesystem path), `buildAssetTimeline()` (`src/assets/timeline.js`) deterministically assembles each project's `{music, sfx, icons}` layers (musicPlan-driven bed, style-gated motion SFX + planner accents on word timings, scene-timed semantic icon objects), new `/api/assets/:id[/file]` routes serve the library (exact ids only, metadata never exposes paths), and `<AssetAudioLayer>` (`remotion/assets-audio.jsx`) actually PLAYS music + SFX in the Short composition (fades, loop, ducked mix). `assets` inputProp defaults to null — pre-4C projects render byte-identically. Verified in a real render: music bed audible at −41 dBFS in the voiceover-free tail vs digital silence in the no-assets control. Motion Engine, Style Bible, and all 4A/4B APIs untouched. Architecture doc: `docs/asset-engine.md`. Do not start Phase 5 without user approval.
+**Phase 5 (Voice Engine) is COMPLETE and validated (NOT yet committed — working tree changes awaiting user approval; 4A = `fb9e61f`, 4B = `852a126`, 4C = uncommitted/approved).** The Voice Engine (NVE) is built, tested, and fully wired into the pipeline and API. Architecture doc: `backend/docs/voice-engine.md`. Do not start Phase 6 without user approval.
 
 ## Completed Work
 
@@ -119,9 +119,26 @@
 - **Smoke test**: `scripts/test-assets-provider.js` — **60 checks** (provider objects/defaults/overrides/guards/leak-checks, music/sfx/icon layers, timeline determinism + policy precedence + style gating + dedup + word-timing placement, fallbacks incl. empty registry and missing words, live `/api/assets` routes on an ephemeral server). Plus `scripts/test-render-assets.js`: real render WITH a timeline, then PCM analysis of the voiceover-free tail — **music audible at −41 dBFS vs −200 dBFS (digital silence) in the no-assets control**.
 - **Validated**: provider smoke 60/60, intelligence 67/67, assets 71/71, Style Bible 71/71, motion 159/159, motion-pipeline 17/17, live server E2E (health/options/voices/projects/video + new asset routes), backcompat re-render of `d2fe791fdb84` RENDER OK (no assets prop), render-with-assets RENDER OK + audibility proven, frontend `tsc` + `vite build` clean, oxlint pre-existing warnings only.
 
+### Phase 5 — Voice Engine (2026-08-06)
+
+- **Voice Registry** (`src/voice/registry.js`): `createVoiceRegistry()` factory + `voiceRegistry` singleton — duplicate ids throw, unknown lookups return `null`, records deep-frozen. Mirrors Motion Registry / Style Bible / Asset Engine semantics exactly.
+- **Voice Schema** (`src/voice/schema.js`): `VoiceRecord` typedef, `VOICE_PROVIDERS` table (8 providers incl. 7 future: openai/azure/google/playht/cartesia/kokoro/local), `VOICE_TIERS` (free-premade/library/cloned/premium/local), `validateVoiceRecord()`. Adding a new provider = one entry in VOICE_PROVIDERS + one definition file.
+- **Built-in ElevenLabs definitions** (`src/voice/definitions/elevenlabs.js`): 4 validated frozen VoiceRecords — George (british male, free-premade, `eleven_monolingual_v1`), Sarah (US female, free-premade), Adam (US male multilingual, Hinglish default, `eleven_multilingual_v2`), Viraj (Hindi male, library tier — gated at pipeline via `metadata.requiresPaidPlan`).
+- **Voice Resolver** (`src/voice/resolver.js`): `resolveVoice()` — 4-step chain (exact id → semantic alias → provider voiceId reverse-lookup → search fallback). `SEMANTIC_VOICE_REFS` maps 16 category aliases to canonical ids. `resolveByProviderId()` is the backwards-compat bridge for old project.json raw ElevenLabs ids.
+- **Voice Intelligence** (`src/voice/intelligence.js`): `selectVoice()` — 5-tier policy chain (user → project → mode+language → language default → engine fallback), returns `{policy, source, ref, voiceId, voice, trail}`. `LANGUAGE_DEFAULTS`, `MODE_VOICE_PREFERENCES`, `STYLE_VOICE_HINTS` tables all deep-frozen.
+- **Voice Search** (`src/voice/search.js`): ranked multi-field search, AND semantics, deterministic, `freeTierOnly` filter.
+- **Validation** (`src/voice/validate.js`): `validateVoiceRegistry()` — health check for duplicate provider ids, unknown providers/tiers, active voices with no languages, missing freeNote on paid-tier voices.
+- **Integration seams** (`src/voice/integration.js`): `voiceForPipeline`, `voiceForLegacyId`, `voiceForMode`, `plannerVoiceSeam`, `requestVoice` — clean interfaces mirroring `src/assets/integration.js`.
+- **Public API** (`src/voice/index.js`): `listActiveVoices()`, `voiceOptions()`, re-exports from all submodules.
+- **Phase 5B — Pipeline wiring**: `generateVoiceover()` (`src/providers/elevenlabs.js`) upgraded to accept per-voice `modelId` + `voiceSettings` (falls back to global constants for backwards compat); `stepVoice()` (`src/core/pipeline.js`) routes through `voiceForPipeline()`, applies free-tier gate (paid-plan voices → voice.adam fallback), passes per-voice model/settings to the provider, persists `voicePlan {resolvedId, displayName, voiceId, model}` on the project.
+- **Phase 5C — API surface**: `GET /api/voices` → `voiceOptions()` (semantic ids, tier, freeTierAvailable, no raw ElevenLabs ids exposed); `GET /api/voices/defaults?mode=&language=` for pre-selecting pickers; `GET /api/voices/:id/sample` accepts semantic ids and raw ids; `GET /api/options` gains `voices` key; API contract bumped v2.4.
+- **Docs**: `backend/docs/voice-engine.md` (new), `DEVELOPMENT_GUIDE.md` (+NVE guidance line), `README.md` (+Phase 5A completion note updated to full Phase 5).
+- **Smoke test** `scripts/test-voice-engine.js`: **99 checks** (schema accept/reject, registry CRUD, frozen records, built-in definitions × all 4 voices, resolver incl. backcompat, search incl. freeTierOnly, selectVoice policy chain incl. user override/project backcompat/mode+language/fallback, validateVoiceRegistry, integration seams, listActiveVoices/voiceOptions).
+- **Validated**: voice engine 99/99, motion 159/159, style bible 71/71, assets 71/71, intelligence 67/67, provider 60/60, pipeline 17/17, frontend `tsc` + `vite build` clean.
+
 ## Pending Phases
 
-- Roadmap after Phase 2 (user-defined, see README): 3 Style Bible ✅, 4 Asset Engine (4A foundation ✅ → 4B asset intelligence ✅ → 4C provider + render integration ✅ → future: asset providers/downloading), 5 Voice Engine, 6 Caption Engine, 7 UI, 8 Authentication & Firebase, 9 YouTube Upload, 10 Public Launch.
+- Roadmap after Phase 2 (user-defined, see README): 3 Style Bible ✅, 4 Asset Engine (4A foundation ✅ → 4B asset intelligence ✅ → 4C provider + render integration ✅), 5 Voice Engine ✅, 6 Caption Engine, 7 UI, 8 Authentication & Firebase, 9 YouTube Upload, 10 Public Launch.
 - Backlog candidates (user-acknowledged, not scheduled):
   - Icon layer consumption in compositions (timeline `icons` objects flow through already; color/size/animation fields reserved) + frontend music picker + `custom:<ref>` music upload flow.
   - **Music license review** — now URGENT before any YouTube publishing: music actually plays in renders as of 4C.

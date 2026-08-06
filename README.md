@@ -96,6 +96,8 @@ Nerrico is developed in **explicit, sequential phases**. Each phase is scoped up
 > ✅ **Phase 4B — Asset Intelligence** complete: the Asset Engine now selects assets automatically — motion kinds map to semantic sound events, each visual style carries its own asset preferences (music, SFX level, icon flavor), music follows a user → project → style → engine policy chain, and the shot planner references semantic asset ids (never filenames). No audio in renders yet — selection only.
 >
 > ✅ **Phase 4C — Asset Provider & Render Integration** complete: renders now have sound — a provider layer resolves semantic ids into render-ready asset objects (URL + start/end/volume/loop/fades/priority timeline fields, never a file path), a deterministic per-project asset timeline drives the new audio layer in the Short composition (looping ducked music bed + motion/planner SFX accents), and `/api/assets` serves the library. Icon objects flow through the same timeline, ready for future compositions.
+>
+> 🚧 **Phase 5A — Voice Engine Foundation** complete: the internal Voice Engine subsystem is built — a validated deep-frozen voice registry with 4 built-in ElevenLabs voices, a `selectVoice()` intelligence layer with a 5-tier policy chain (user → project → mode+language → language default → engine fallback), semantic resolver (`voice.documentary`, `voice.realestate`, `voice.tech` …), multi-field search, backwards-compat `resolveByProviderId()` for old project.json files, and integration seams for Phase 5B/5C. Architecture doc: `docs/voice-engine.md`. Provider/pipeline/API wiring in Phase 5B.
 
 **Upcoming phases:**
 

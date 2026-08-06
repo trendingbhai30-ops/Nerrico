@@ -1,4 +1,4 @@
-# Nerrico Backend API Contract (v2)
+# Nerrico Backend API Contract (v2.4)
 
 Base URL: `http://localhost:4000`
 All request/response bodies are JSON unless stated. The frontend must treat this contract as the source of truth — the backend is built to match it exactly.
@@ -10,6 +10,8 @@ All request/response bodies are JSON unless stated. The frontend must treat this
 **New in v2.2 (Phase 4B — Asset Intelligence)**: `music` — an optional per-project music setting: `"auto"` (default — the selected visual style picks), `"none"` (silence), or a semantic music category from `GET /api/options` → `music.categories` (e.g. `"music.epic"`). The resolved decision appears on the project as `musicPlan` after scene planning.
 
 **New in v2.3 (Phase 4C — Asset Provider & Render Integration)**: the `musicPlan` is now audible — rendered reels include the background music bed and SFX accents. New read-only library endpoints under `/api/assets` (below); the frontend never handles asset filenames or paths.
+
+**New in v2.4 (Phase 5B/5C — Voice Engine)**: `GET /api/voices` returns the richer Voice Engine shape (semantic ids, tier, freeTierAvailable, etc.) instead of the old flat array. New `GET /api/voices/defaults` for pre-selecting pickers. `GET /api/options` gains a `voices` key (the same `voiceOptions()` payload). Resolved voice selection is now persisted on the project as `voicePlan` (populated after the voicing step). The `voiceId` field on `POST /api/projects` still accepts raw ElevenLabs ids for backwards compat — the Voice Engine resolves them transparently.
 
 ## Health
 
@@ -47,17 +49,51 @@ Frontend shows a "backend offline" banner whenever this fails.
   "music": {
     "policies": ["auto", "none"],
     "categories": ["music.ambient", "music.calm", "music.cinematic", "music.corporate", "music.documentary", "music.epic", "music.tech", "music.upbeat", "…"]
+  },
+  "voices": {
+    "voices": [
+      {"id": "voice.george", "displayName": "George", "provider": "elevenlabs", "gender": "male", "accent": "british", "languages": ["english"], "tags": ["narrator", "documentary", "…"], "tier": "free-premade", "freeTierAvailable": true, "freeNote": null},
+      "…"
+    ],
+    "providers": ["elevenlabs"],
+    "tiers": ["free-premade", "library"]
   }
 }
 ```
-When the selected mode has `researchOptional: true`, the research textarea may be left empty (a good title is enough). The voice picker is only shown/required when `format` is `reel`. `music.categories` is derived from the local music library's tags and grows automatically — populate a picker from it, never hardcode.
+When the selected mode has `researchOptional: true`, the research textarea may be left empty (a good title is enough). The voice picker is only shown/required when `format` is `reel`. `music.categories` is derived from the local music library's tags and grows automatically — populate a picker from it, never hardcode. `voices` matches the shape of `GET /api/voices` exactly.
 
 ## Voices
 
 `GET /api/voices`
-→ `200 {"voices": [{"id": "pNInz6obpgDQGcFmaJgB", "name": "Adam", "gender": "male", "accent": "US", "sampleUrl": "/api/voices/pNInz6obpgDQGcFmaJgB/sample"}]}`
+→ `200` (Voice Engine registry — richer than the old flat array):
+```json
+{
+  "voices": [
+    {
+      "id": "voice.george",
+      "displayName": "George",
+      "provider": "elevenlabs",
+      "gender": "male",
+      "accent": "british",
+      "languages": ["english"],
+      "tags": ["narrator", "documentary", "authoritative", "calm", "deep", "news"],
+      "tier": "free-premade",
+      "freeTierAvailable": true,
+      "freeNote": null
+    }
+  ],
+  "providers": ["elevenlabs"],
+  "tiers": ["free-premade", "library"]
+}
+```
+`voiceId` (raw ElevenLabs id) is intentionally NOT exposed here — the pipeline and backend resolve voices by semantic id; the frontend sends the semantic `id` as the `voiceId` field of `POST /api/projects`. Raw ElevenLabs ids in old project.json files are resolved transparently server-side.
 
-`GET /api/voices/:id/sample` → `200` audio/mpeg (short mp3 preview)
+`GET /api/voices/defaults?mode=normal&language=english`
+→ `200 {"voice": {"id": "voice.george", "displayName": "George", "voiceId": "...", "accent": "british", "tier": "free-premade", "freeTierAvailable": true}}`
+Use to pre-select the voice picker based on the mode + language the user chose.
+
+`GET /api/voices/:id/sample` → `200` audio/mpeg (short mp3 preview).
+`:id` may be a semantic id (`voice.george`) or a raw ElevenLabs voiceId (legacy). Returns `404` if no sample file is found on disk.
 
 ## Projects (one project = one reel OR one carousel)
 
@@ -98,6 +134,7 @@ Body:
   "format": "reel | carousel",
   "music": "auto | none | a semantic music category (always present; legacy projects report auto)",
   "musicPlan": "null until scene planning, then {\"policy\": \"auto | category | none | custom\", \"source\": \"user | project | style | engine\", \"ref\": \"string | null\", \"assetId\": \"string | null\"}",
+  "voicePlan": "null until voicing step, then {\"resolvedId\": \"voice.george\", \"displayName\": \"George\", \"voiceId\": \"JBFqnCBsd6RMkjVDRZzb\", \"model\": \"eleven_monolingual_v1\"} — the actual voice used, after free-tier gating",
   "script": "string | null (reels only)",
   "slides": "null | [{\"role\": \"hook | content | cta\", \"heading\": \"string\", \"body\": \"string\"}] (carousels only)",
   "error": "string | null",

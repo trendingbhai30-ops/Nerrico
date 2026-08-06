@@ -4,6 +4,7 @@ import { STYLES } from '../../content/styles.js';
 import { visualStyleOptions } from '../../content/stylebible/index.js';
 import { logoPath } from '../../content/branding.js';
 import { musicCategoryVocabulary } from '../../assets/index.js';
+import { voiceOptions } from '../../voice/index.js';
 
 export const metaRouter = Router();
 
@@ -25,6 +26,9 @@ metaRouter.get('/options', (req, res) => {
     // categories the library currently supports (registry-derived, so this
     // list grows with the library — nothing to update here).
     music: { policies: ['auto', 'none'], categories: musicCategoryVocabulary() },
+    // Voice Engine vocabulary (Phase 5C): structured voice list for pickers.
+    // voices.providers and voices.tiers are derived automatically from the registry.
+    voices: voiceOptions(),
   });
 });
 

@@ -4,6 +4,42 @@ All completed phases and major architectural changes, newest first. Add an entry
 
 ---
 
+## 2026-08-06 — Phase 5: Voice Engine ✅
+
+The Nerrico Voice Engine (NVE) is fully built and wired — every voice decision now
+flows through a validated, deep-frozen registry with a 5-tier policy chain, semantic
+resolution, and backwards-compatible raw-id handling. No raw ElevenLabs voiceIds appear
+anywhere outside the definitions file. Architecture doc: `backend/docs/voice-engine.md`.
+
+**Phase 5A — Foundation** (registry + intelligence, interfaces only):
+- **Registry** (`src/voice/registry.js`): `createVoiceRegistry()` factory + `voiceRegistry` singleton. Duplicate ids throw; unknown lookups return `null`; records deep-frozen. Identical semantics to the Motion Registry, Style Bible, and Asset Engine.
+- **Schema** (`src/voice/schema.js`): `VoiceRecord` type, `VOICE_PROVIDERS` (elevenlabs + 7 future providers declared for BYOK readiness), `VOICE_TIERS` (free-premade / library / cloned / premium / local), `validateVoiceRecord()`.
+- **Built-in ElevenLabs definitions** (`src/voice/definitions/elevenlabs.js`): 4 validated VoiceRecords — George (british male, `eleven_monolingual_v1`, free), Sarah (US female, free), Adam (US male multilingual, `eleven_multilingual_v2`, Hinglish default, free), Viraj (Hindi male, library tier, `requiresPaidPlan: true` — gated at the pipeline level).
+- **Resolver** (`src/voice/resolver.js`): `resolveVoice()` — exact id → semantic alias (16 refs) → provider voiceId reverse-lookup (backwards compat for old project.json) → free-text search fallback → `null`. `resolveByProviderId()` is the explicit backwards-compat bridge.
+- **Intelligence** (`src/voice/intelligence.js`): `selectVoice()` — 5-tier policy chain (user → project → mode+language → language default → engine fallback), `trail` audit log. `LANGUAGE_DEFAULTS`, `MODE_VOICE_PREFERENCES`, `STYLE_VOICE_HINTS` all deep-frozen. `plannerVoiceVocabulary()` for the planner.
+- **Search** (`src/voice/search.js`): ranked multi-field, AND-semantics, deterministic, `freeTierOnly` filter.
+- **Validation** (`src/voice/validate.js`): `validateVoiceRegistry()` — health check for duplicate provider ids, unknown entries, active voices with no languages, paid voices with no freeNote.
+- **Integration seams** (`src/voice/integration.js`): `voiceForPipeline`, `voiceForLegacyId`, `voiceForMode`, `plannerVoiceSeam`, `requestVoice` — clean interfaces, production-wired in 5B.
+- **Public API** (`src/voice/index.js`): `listActiveVoices()`, `voiceOptions()`, re-exports from all submodules.
+- **Demo**: `scripts/demo-voice.js` — human-readable tour of the registry, resolver, policy chain, search, and validation.
+- **Smoke test** `scripts/test-voice-engine.js` — **99/99 checks** (schema, registry, definitions, resolver, search, policy chain, validation, integration seams, public helpers).
+
+**Phase 5B — Pipeline wiring**:
+- `generateVoiceover()` (`src/providers/elevenlabs.js`) accepts per-voice `modelId` + `voiceSettings`; global constants remain as fallbacks so pre-5B callers are unaffected.
+- `stepVoice()` (`src/core/pipeline.js`): calls `voiceForPipeline({project: p.voiceId, mode, language})` → resolves VoiceRecord through the policy chain (old raw ElevenLabs ids in project.json work transparently via `resolveByProviderId`). Free-tier gate: `metadata.requiresPaidPlan === true` → falls back to `voice.adam + eleven_multilingual_v2`. Passes `voice.voiceId`, `voice.metadata.elevenLabsModel`, `voice.defaultSettings` to the provider. Persists `voicePlan {resolvedId, displayName, voiceId, model}` on the project.
+
+**Phase 5C — API surface**:
+- `GET /api/voices` → `voiceOptions()` (semantic ids, tier, freeTierAvailable — raw ElevenLabs ids never exposed to the frontend).
+- `GET /api/voices/defaults?mode=&language=` — engine's default voice for a mode+language pair; useful for pre-selecting the picker.
+- `GET /api/voices/:id/sample` accepts both semantic ids and raw ElevenLabs voiceIds (backwards compat).
+- `GET /api/options` gains `voices` key (same payload as `GET /api/voices`).
+- API contract bumped to **v2.4**; `voicePlan` added to the project response shape.
+
+**Validated**: voice engine **99/99**, motion 159/159, style bible 71/71, assets 71/71, intelligence 67/67, provider 60/60, pipeline 17/17, frontend `tsc` clean.
+**No regressions** on any pre-Phase-5 test.
+
+---
+
 ## 2026-08-05 — Phase 4C: Asset Provider & Render Integration ✅
 
 Renders have sound. The Asset Engine now supplies real assets to compositions through a

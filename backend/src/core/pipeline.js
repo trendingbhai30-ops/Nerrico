@@ -15,6 +15,7 @@ import { getMode } from '../content/modes.js';
 import { brandingProps } from '../content/branding.js';
 import { resolveVisualStyle, composeImagePrompt } from '../content/stylebible/index.js';
 import { selectMusic, buildAssetTimeline } from '../assets/index.js';
+import { voiceForPipeline, voiceRegistry } from '../voice/index.js';
 import { planScenes } from './scenes.js';
 import { planSlides } from './slides.js';
 import { renderShort, renderSlides } from './render.js';
@@ -59,11 +60,38 @@ async function stepScript(id) {
 async function stepVoice(id) {
   const p = getProject(id);
   updateProject(id, { status: 'voicing', error: null, progress: { step: 'Recording the voiceover…', percent: 20 } });
+
+  // Voice Engine policy chain (Phase 5B): user → project → mode+language → default → fallback.
+  // p.voiceId may be a raw ElevenLabs id (pre-5A project.json) or a semantic ref — the
+  // resolver handles both via resolveByProviderId backwards-compat.
+  let { voice } = voiceForPipeline({ project: p.voiceId, mode: p.mode, language: p.language });
+
+  // Free-tier gate: library/cloned voices return 402 on the restricted key.
+  // Fall back to voice.adam (eleven_multilingual_v2) which handles Hinglish/Hindi acceptably.
+  if (voice && voice.metadata.requiresPaidPlan) {
+    log.warn(`voice "${voice.id}" requires a paid plan — free-tier fallback to voice.adam`);
+    voice = voiceRegistry.get('voice.adam');
+  }
+  const voiceRecord = voice || voiceRegistry.get('voice.george');
+
   const { words, durationSec } = await generateVoiceover({
     text: p.script,
-    voiceId: p.voiceId,
+    voiceId:       voiceRecord.voiceId,
+    modelId:       voiceRecord.metadata.elevenLabsModel,
+    voiceSettings: voiceRecord.defaultSettings,
     outMp3: artifactPath(id, ARTIFACTS.voiceover),
   });
+
+  // Persist the resolved voice selection for audit, frontend display, and retry.
+  updateProject(id, {
+    voicePlan: {
+      resolvedId:  voiceRecord.id,
+      displayName: voiceRecord.displayName,
+      voiceId:     voiceRecord.voiceId,
+      model:       voiceRecord.metadata.elevenLabsModel,
+    },
+  });
+
   fs.writeFileSync(artifactPath(id, ARTIFACTS.timing), JSON.stringify({ words, durationSec }));
 }
 
